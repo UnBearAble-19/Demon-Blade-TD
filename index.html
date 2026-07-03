@@ -47,6 +47,7 @@
     position:absolute; left:0; top:0;
     width:100%; height:100%;
     display:block;
+    cursor:crosshair;
   }
   #ui{
     position:absolute; inset:0;
@@ -62,6 +63,7 @@
     padding:6px 10px;
     background:linear-gradient(180deg, rgba(20,12,25,.92), rgba(20,12,25,.55));
     border-bottom:2px solid #5b3f86;
+    z-index:4;
   }
   .stat{
     display:flex; align-items:center; gap:5px;
@@ -94,7 +96,7 @@
 
   /* ---- shop sidebar ---- */
   #shop{
-    position:absolute; left:4px; bottom:4px;
+    position:absolute; left:4px; right:4px; bottom:4px;
     display:flex; gap:4px;
     background:rgba(20,12,25,.85);
     border:2px solid #5b3f86;
@@ -102,10 +104,12 @@
     padding:4px;
     pointer-events:auto;
     flex-wrap:wrap;
-    max-width:60%;
+    max-height:38%;
+    overflow-y:auto;
+    z-index:4;
   }
   .towerCard{
-    width:clamp(46px,7vw,64px);
+    width:clamp(44px,6.6vw,62px);
     padding:3px 2px 4px;
     border-radius:8px;
     background:var(--panel);
@@ -117,33 +121,35 @@
   }
   .towerCard.selected{border-color:var(--accent3); background:#493767;}
   .towerCard.disabled{opacity:.4;}
-  .towerCard .tname{font-size:clamp(8px,1.1vw,10px); display:block; margin-top:1px; line-height:1.05;}
-  .towerCard .tcost{font-size:clamp(8px,1.2vw,11px); color:var(--gold); display:block;}
-  .towerCard svg{width:clamp(28px,4.4vw,38px); height:clamp(28px,4.4vw,38px);}
+  .towerCard.legendary{border-color:#ffdf6b; box-shadow:0 0 8px rgba(255,223,107,.6);}
+  .towerCard .tname{font-size:clamp(7.5px,1.05vw,9.5px); display:block; margin-top:1px; line-height:1.05;}
+  .towerCard .tcost{font-size:clamp(8px,1.15vw,10.5px); color:var(--gold); display:block;}
+  .towerCard svg{width:clamp(26px,4.2vw,36px); height:clamp(26px,4.2vw,36px);}
 
   /* ---- selected tower / build panel ---- */
   #infoPanel{
     position:absolute;
-    background:rgba(20,12,25,.95);
+    background:rgba(20,12,25,.96);
     border:2px solid var(--accent3);
     border-radius:10px;
-    padding:8px 10px;
+    padding:8px 9px;
     pointer-events:auto;
-    font-size:12px;
-    min-width:150px;
+    font-size:11.5px;
+    min-width:172px;
     display:none;
     z-index:5;
   }
-  #infoPanel h4{margin:0 0 4px; font-size:13px; color:var(--accent3);}
+  #infoPanel h4{margin:0 0 4px; font-size:12.5px; color:var(--accent3);}
   #infoPanel .row{display:flex; justify-content:space-between; margin:2px 0;}
-  #infoPanel .btnrow{display:flex; gap:6px; margin-top:6px;}
+  #infoPanel .btnrow{display:flex; gap:4px; margin-top:5px;}
   #infoPanel button{
-    flex:1; border:none; border-radius:6px; padding:5px 4px; font-weight:bold; cursor:pointer; font-size:11px;
+    flex:1; border:none; border-radius:6px; padding:5px 2px; font-weight:bold; cursor:pointer; font-size:9.5px;
+    line-height:1.2;
   }
   .btn-up{background:var(--accent4); color:#123;}
   .btn-up:disabled{background:#555; color:#999; cursor:not-allowed;}
-  .btn-sell{background:var(--accent1); color:#fff;}
-  .btn-close{background:#555;color:#fff;}
+  .btn-sell{background:var(--accent1); color:#fff; font-size:11px;}
+  .btn-close{background:#555;color:#fff; font-size:11px;}
 
   /* ---- overlays ---- */
   .overlay{
@@ -175,15 +181,16 @@
   }
   .bigbtn:active{transform:translateY(4px); box-shadow:0 2px 0 #7a1f1f;}
   .instructions{
-    max-width:520px; font-size:clamp(11px,1.5vw,14px); line-height:1.5; color:#e6d9f5;
+    max-width:540px; font-size:clamp(11px,1.5vw,14px); line-height:1.5; color:#e6d9f5;
     background:rgba(255,255,255,.06); border-radius:12px; padding:12px 18px; margin-top:14px;
   }
   .instructions b{color:var(--accent3);}
   #waveBanner{
     position:absolute; top:70px; left:50%; transform:translate(-50%,-10px);
     background:rgba(0,0,0,.55); border:1px solid var(--accent3); border-radius:10px;
-    padding:6px 22px; font-size:clamp(14px,2.4vw,22px); font-weight:900; color:var(--accent3);
+    padding:6px 22px; font-size:clamp(13px,2.2vw,20px); font-weight:900; color:var(--accent3);
     opacity:0; transition:opacity .4s, transform .4s; pointer-events:none; z-index:6;
+    text-align:center; max-width:80%;
   }
   #waveBanner.show{opacity:1; transform:translate(-50%,0);}
   footer.small{color:#a996c9; font-size:11px; margin-top:16px;}
@@ -217,11 +224,13 @@
         <div class="title">BLADE WATCH</div>
         <div class="subtitle">— A Demon Ward Tower Defense —</div>
         <div class="instructions">
-          Demons are pouring in from the mist. Recruit <b>Slayers</b> along the road to cut them down
-          before they reach the village gate.<br><br>
-          🗡️ Tap a Slayer card, then tap a glowing stone pad to recruit them.<br>
-          ⬆️ Tap a placed Slayer to upgrade or dismiss them.<br>
-          🌊 Tap <b>Start Wave</b> when you're ready — gold trickles in as demons fall.
+          Demons are pouring in from the mist. Recruit <b>Slayers</b> anywhere on open ground to cut them
+          down before they reach the village gate.<br><br>
+          🗡️ Tap a Slayer card, then tap open ground (away from the road) to place them.<br>
+          ⬆️ Tap a placed Slayer to pump gold into Damage, Range, or Attack Speed — mix and match.<br>
+          👑 Save up for the <b>Sun Slayer</b> — the strongest style ever recorded.<br>
+          ⚠️ Every 5th wave brings a ranked <b>Nightmare</b> demon general — rank 1 is the worst.<br>
+          🌊 Tap <b>Start Wave</b> when ready. You start with just enough for one Water Slayer.
         </div>
         <button class="bigbtn" id="btnPlay">Begin the Watch</button>
         <footer class="small">Best wave survived: <span id="bestWaveLabel">0</span></footer>
@@ -253,11 +262,6 @@ const ctx = canvas.getContext('2d');
 const GAME_W = 1150, GAME_H = 620;
 canvas.width = GAME_W; canvas.height = GAME_H;
 
-function resize(){
-  // canvas is CSS-scaled by the stage container; internal res stays fixed for crispness
-}
-window.addEventListener('resize', resize);
-
 // Path waypoints the demons walk along (a winding road through the village outskirts)
 const PATH = [
   {x:-60, y:100}, {x:210, y:100}, {x:210, y:290}, {x:760, y:290},
@@ -265,7 +269,6 @@ const PATH = [
   {x:270, y:560}, {x:1210, y:560}
 ];
 
-// precompute segment lengths for arc-length parametrization
 const segLens = [];
 let totalLen = 0;
 for(let i=0;i<PATH.length-1;i++){
@@ -292,46 +295,46 @@ function pointAtDistance(d){
   return {x:PATH[PATH.length-1].x, y:PATH[PATH.length-1].y, angle:0};
 }
 
-// Build pads (where towers can be placed) - hand placed off the road
-const PAD_R = 27;
-const PADS = [
-  {x:90,y:170},{x:380,y:170},{x:580,y:170},{x:850,y:175},{x:1040,y:180},
-  {x:1040,y:300},{x:850,y:335},{x:630,y:335},{x:430,y:340},{x:290,y:365},
-  {x:110,y:340},{x:130,y:470},{x:400,y:530},{x:560,y:530},{x:720,y:530},
-  {x:880,y:500},{x:1080,y:480},{x:600,y:400}
-].map((p,i)=>({...p, id:i, tower:null}));
-
-function padFree(pad){ return pad.tower === null; }
-function padAt(mx,my){
-  for(const p of PADS){
-    if(Math.hypot(p.x-mx,p.y-my) <= PAD_R+6) return p;
+/* ---- free placement validity helpers ---- */
+const TOWER_MIN_SEP = 32;
+const PLACEMENT_MARGIN = 22;
+const PATH_BUFFER = 40;
+function distToSegment(px,py,ax,ay,bx,by){
+  const l2 = (bx-ax)*(bx-ax)+(by-ay)*(by-ay);
+  if(l2===0) return Math.hypot(px-ax,py-ay);
+  let t = ((px-ax)*(bx-ax)+(py-ay)*(by-ay))/l2;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px-(ax+t*(bx-ax)), py-(ay+t*(by-ay)));
+}
+function distanceToPath(x,y){
+  let min = Infinity;
+  for(let i=0;i<PATH.length-1;i++){
+    const a=PATH[i], b=PATH[i+1];
+    const d = distToSegment(x,y,a.x,a.y,b.x,b.y);
+    if(d<min) min=d;
   }
-  return null;
+  return min;
+}
+function isValidPlacement(x,y){
+  if(x<PLACEMENT_MARGIN || x>GAME_W-PLACEMENT_MARGIN) return false;
+  if(y<66 || y>GAME_H-PLACEMENT_MARGIN) return false;
+  if(distanceToPath(x,y) < PATH_BUFFER) return false;
+  for(const t of towers){
+    if(Math.hypot(t.x-x, t.y-y) < TOWER_MIN_SEP) return false;
+  }
+  return true;
 }
 
 /* =========================================================
    VISUAL HELPERS (cartoony procedural art, no external assets)
 ========================================================= */
-function roundRectPath(x,y,w,h,r){
-  ctx.beginPath();
-  ctx.moveTo(x+r,y);
-  ctx.arcTo(x+w,y,x+w,y+h,r);
-  ctx.arcTo(x+w,y+h,x,y+h,r);
-  ctx.arcTo(x,y+h,x,y,r);
-  ctx.arcTo(x,y,x+w,y,r);
-  ctx.closePath();
-}
-function outlineStroke(width, color){ ctx.lineWidth = width; ctx.strokeStyle = color || '#1a1220'; ctx.stroke(); }
-
 function drawBackground(){
-  // sky/ground gradient
   const g = ctx.createLinearGradient(0,0,0,GAME_H);
   g.addColorStop(0,'#3c6e3f');
   g.addColorStop(1,'#294f2d');
   ctx.fillStyle = g;
   ctx.fillRect(0,0,GAME_W,GAME_H);
 
-  // soft dappled patches
   ctx.save();
   ctx.globalAlpha = .12;
   for(let i=0;i<26;i++){
@@ -343,7 +346,6 @@ function drawBackground(){
   }
   ctx.restore();
 
-  // path (dirt road) with outline
   ctx.save();
   ctx.lineJoin='round'; ctx.lineCap='round';
   ctx.beginPath();
@@ -355,7 +357,6 @@ function drawBackground(){
   ctx.strokeStyle = '#c9a066';
   ctx.lineWidth = 36;
   ctx.stroke();
-  // subtle center dashes
   ctx.setLineDash([14,16]);
   ctx.strokeStyle = 'rgba(255,255,255,.18)';
   ctx.lineWidth = 3;
@@ -363,7 +364,6 @@ function drawBackground(){
   ctx.setLineDash([]);
   ctx.restore();
 
-  // gate at the end
   const endPt = PATH[PATH.length-1];
   ctx.save();
   ctx.translate(endPt.x-10, endPt.y);
@@ -375,7 +375,6 @@ function drawBackground(){
   ctx.beginPath(); ctx.arc(-4,-46,13,Math.PI,0); ctx.fill();
   ctx.restore();
 
-  // start mist at entrance
   const startPt = PATH[0];
   ctx.save();
   const mg = ctx.createRadialGradient(startPt.x+40,startPt.y,5,startPt.x+40,startPt.y,90);
@@ -384,25 +383,30 @@ function drawBackground(){
   ctx.fillStyle = mg;
   ctx.beginPath(); ctx.arc(startPt.x+40,startPt.y,90,0,Math.PI*2); ctx.fill();
   ctx.restore();
-
-  // pads
-  for(const p of PADS){
-    ctx.save();
-    ctx.translate(p.x,p.y);
-    ctx.beginPath(); ctx.ellipse(0,PAD_R*0.55,PAD_R*0.95,PAD_R*0.4,0,0,Math.PI*2);
-    ctx.fillStyle='rgba(0,0,0,.25)'; ctx.fill();
-    ctx.beginPath(); ctx.arc(0,0,PAD_R,0,Math.PI*2);
-    ctx.fillStyle = padFree(p) ? '#8c7fa8' : '#4a4460';
-    ctx.fill();
-    ctx.lineWidth=3; ctx.strokeStyle= padFree(p)? '#c9bfe6':'#2b263b'; ctx.stroke();
-    ctx.beginPath(); ctx.arc(0,0,PAD_R*0.6,0,Math.PI*2);
-    ctx.fillStyle = padFree(p) ? 'rgba(255,255,255,.18)' : 'rgba(0,0,0,.2)';
-    ctx.fill();
-    ctx.restore();
-  }
 }
 
-// Simple particle system
+function drawPlacementGhost(){
+  if(!state.selectedTowerType || !hoverPos) return;
+  const def = TOWER_TYPES[state.selectedTowerType];
+  const valid = isValidPlacement(hoverPos.x, hoverPos.y) && state.gold>=def.cost;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(hoverPos.x, hoverPos.y, def.range, 0, Math.PI*2);
+  ctx.strokeStyle = valid? 'rgba(255,255,255,.45)':'rgba(255,90,90,.4)';
+  ctx.setLineDash([6,6]); ctx.lineWidth=2; ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.beginPath();
+  ctx.arc(hoverPos.x, hoverPos.y, 17, 0, Math.PI*2);
+  ctx.fillStyle = valid ? def.color : '#ff5d5d';
+  ctx.globalAlpha = 0.55;
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.lineWidth=2; ctx.strokeStyle = valid? '#fff':'#7a1414'; ctx.stroke();
+  ctx.restore();
+}
+
+// particles
 const particles = [];
 function spawnParticles(x,y,color,count,opts){
   opts = opts||{};
@@ -435,7 +439,6 @@ function drawParticles(){
   }
 }
 
-// Floating damage/gold text
 const floaters = [];
 function spawnFloater(x,y,text,color){
   floaters.push({x,y,text,color,life:0.8,maxLife:0.8});
@@ -460,67 +463,58 @@ function drawFloaters(){
 }
 
 /* =========================================================
-   TOWER (SLAYER) DEFINITIONS
+   TOWER (SLAYER) DEFINITIONS  — 8 recruitable styles
 ========================================================= */
 const TOWER_TYPES = {
-  water: {
-    name:'Water Slayer', cost:60, color:'#3fb7ff', dark:'#1c6f9c',
-    range:118, damage:12, rate:0.65, proj:'slash', special:'splash', splashR:34,
-    desc:'Balanced cuts with a splash on hit.'
-  },
-  flame: {
-    name:'Flame Slayer', cost:85, color:'#ff6a3f', dark:'#a83a1c',
-    range:100, damage:22, rate:1.0, proj:'fire', special:'burn', burnDps:6, burnTime:2.5,
-    desc:'Heavy strikes that set demons ablaze.'
-  },
-  thunder: {
-    name:'Thunder Slayer', cost:95, color:'#ffe14d', dark:'#b8901a',
-    range:105, damage:7, rate:0.22, proj:'bolt', special:'chain', chainCount:2, chainRange:70,
-    desc:'Rapid strikes that arc between foes.'
-  },
-  stone: {
-    name:'Stone Slayer', cost:110, color:'#9c8f7a', dark:'#5c5344',
-    range:95, damage:34, rate:1.4, proj:'hammer', special:'slow', slowMul:0.5, slowTime:1.6,
-    desc:'Crushing blows that slow demons.'
-  },
-  wind: {
-    name:'Wind Slayer', cost:130, color:'#6bd48a', dark:'#2f8a4c',
-    range:150, damage:14, rate:0.85, proj:'gale', special:'pierce', pierceCount:3,
-    desc:'Long reach, cuts through multiple foes.'
-  }
+  water:   { name:'Water Slayer',   cost:60,  color:'#3fb7ff', dark:'#1c6f9c', range:115, damage:10, rate:0.65, proj:'slash',  special:'splash', splashR:34, desc:'Balanced cuts with a splash on hit.' },
+  flame:   { name:'Flame Slayer',   cost:90,  color:'#ff6a3f', dark:'#a83a1c', range:100, damage:20, rate:1.0,  proj:'fire',   special:'burn',   burnDps:6, burnTime:2.5, desc:'Sets demons ablaze.' },
+  thunder: { name:'Thunder Slayer', cost:100, color:'#ffe14d', dark:'#b8901a', range:105, damage:6,  rate:0.2,  proj:'bolt',   special:'chain',  chainCount:2, chainRange:70, desc:'Rapid strikes that arc between foes.' },
+  stone:   { name:'Stone Slayer',   cost:115, color:'#9c8f7a', dark:'#5c5344', range:95,  damage:30, rate:1.4,  proj:'hammer', special:'slow',   slowMul:0.5, slowTime:1.6, desc:'Crushing blows that slow demons.' },
+  wind:    { name:'Wind Slayer',    cost:135, color:'#6bd48a', dark:'#2f8a4c', range:150, damage:13, rate:0.85, proj:'gale',   special:'pierce', pierceCount:3, desc:'Long reach, cuts through multiple foes.' },
+  poison:  { name:'Serpent Slayer', cost:150, color:'#7fd94a', dark:'#355c1c', range:110, damage:5,  rate:0.5,  proj:'fang',   special:'poison', poisonDps:4, poisonTime:3, maxStacks:5, desc:'Venom that stacks the longer the fight goes.' },
+  mist:    { name:'Mist Slayer',    cost:170, color:'#8fb7c9', dark:'#3d5a66', range:130, damage:16, rate:0.6,  proj:'mist',   special:'crit',   critChance:0.3, critMul:2.2, desc:'Strikes from the fog — high crit chance.' },
+  sun:     { name:'Sun Slayer',     cost:480, color:'#ffdf6b', dark:'#8a6a00', range:140, damage:55, rate:0.5,  proj:'sun',    special:'radiant',splashR:40, legendary:true, desc:'The strongest style ever recorded.' }
 };
-const TOWER_ORDER = ['water','flame','thunder','stone','wind'];
-const UPGRADE_MUL = [1, 1.55, 2.25]; // damage/range multiplier by level index (0,1,2)
-const UPGRADE_COST_MUL = [0, 0.75, 1.3]; // cost relative to base cost
+const TOWER_ORDER = ['water','flame','thunder','stone','wind','poison','mist','sun'];
 
 let towers = [];
 let towerIdCounter = 1;
+let hoverPos = null;
 
 class Tower{
-  constructor(type, pad){
+  constructor(type, x, y){
     this.type = type;
     this.def = TOWER_TYPES[type];
-    this.pad = pad;
-    this.x = pad.x; this.y = pad.y - 4;
-    this.level = 0; // 0,1,2 -> displayed as 1,2,3
+    this.x = x; this.y = y;
+    this.dmgLevel = 0; this.rangeLevel = 0; this.speedLevel = 0;
+    this.totalSpent = this.def.cost;
     this.cooldown = 0;
     this.id = towerIdCounter++;
     this.facing = -Math.PI/2;
     this.animT = Math.random()*10;
-    pad.tower = this;
+    this.swingT = 0;
+    this.swingDur = 0.28;
   }
-  get range(){ return this.def.range * (1 + this.level*0.12); }
-  get damage(){ return this.def.damage * UPGRADE_MUL[this.level]; }
-  get rate(){ return this.def.rate * (this.level===2? 0.8 : this.level===1? 0.9 : 1); }
-  get sellValue(){
-    let spent = this.def.cost;
-    for(let l=1;l<=this.level;l++) spent += Math.round(this.def.cost*UPGRADE_COST_MUL[l]);
-    return Math.round(spent*0.6);
+  get range(){ return this.def.range * (1 + 0.09*this.rangeLevel); }
+  get damage(){ return this.def.damage * (1 + 0.22*this.dmgLevel); }
+  get rate(){ return this.def.rate * Math.pow(0.9, this.speedLevel); }
+  get totalLevel(){ return this.dmgLevel + this.rangeLevel + this.speedLevel; }
+  upgradeCost(track){
+    const lvl = track==='dmg'? this.dmgLevel : track==='range'? this.rangeLevel : this.speedLevel;
+    if(lvl>=4) return null;
+    const mul = track==='dmg'? 0.4 : track==='range'? 0.28 : 0.34;
+    return Math.round(this.def.cost*mul*(lvl+1));
   }
-  get upgradeCost(){
-    if(this.level>=2) return null;
-    return Math.round(this.def.cost*UPGRADE_COST_MUL[this.level+1]);
+  applyUpgrade(track){
+    const cost = this.upgradeCost(track);
+    if(cost===null) return null;
+    if(track==='dmg') this.dmgLevel++;
+    else if(track==='range') this.rangeLevel++;
+    else this.speedLevel++;
+    this.totalSpent += cost;
+    return cost;
   }
+  get sellValue(){ return Math.round(this.totalSpent*0.6); }
   findTarget(enemies){
     let best=null, bestProg=-1;
     for(const e of enemies){
@@ -534,38 +528,48 @@ class Tower{
   }
   update(dt, enemies, gainGold){
     this.animT += dt;
+    if(this.swingT>0){ this.swingT = Math.max(0, this.swingT - dt); }
     this.cooldown -= dt;
     const target = this.findTarget(enemies);
     if(target) this.facing = Math.atan2(target.y-this.y, target.x-this.x);
     if(target && this.cooldown<=0){
       this.cooldown = this.rate;
+      this.swingT = this.swingDur;
       fireProjectile(this, target);
     }
   }
   draw(){
-    const s = 1;
     ctx.save();
     ctx.translate(this.x, this.y);
-    // base shadow
     ctx.beginPath(); ctx.ellipse(0, 20, 20, 7, 0, 0, Math.PI*2);
     ctx.fillStyle='rgba(0,0,0,.3)'; ctx.fill();
 
     const bob = Math.sin(this.animT*3)*1.5;
     ctx.translate(0, bob);
 
-    // level aura ring for lvl3
-    if(this.level>=2){
+    if(this.def.legendary){
+      ctx.save();
+      const pulse = 0.5+Math.sin(this.animT*2.4)*0.15;
+      ctx.beginPath(); ctx.arc(0,2,28,0,Math.PI*2);
+      const rg = ctx.createRadialGradient(0,2,4,0,2,28);
+      rg.addColorStop(0,'rgba(255,223,107,'+ (pulse*0.5) +')');
+      rg.addColorStop(1,'rgba(255,223,107,0)');
+      ctx.fillStyle = rg; ctx.fill();
+      ctx.restore();
+    } else if(this.totalLevel>=8){
       ctx.beginPath(); ctx.arc(0,4,24,0,Math.PI*2);
       ctx.strokeStyle = this.def.color; ctx.globalAlpha=.5; ctx.lineWidth=2; ctx.stroke();
       ctx.globalAlpha=1;
     }
 
-    drawSlayerFigure(this.def.color, this.def.dark, this.facing, this.level);
+    const swingProgress = this.swingDur>0 ? 1 - (this.swingT/this.swingDur) : 1;
+    drawSlayerFigure(this.def.color, this.def.dark, this.facing, this.swingT>0? swingProgress:null, this.def.legendary);
 
-    // stars for level
-    for(let i=0;i<this.level+1;i++){
+    const pipCount = Math.min(6, this.totalLevel);
+    for(let i=0;i<pipCount;i++){
+      const row = Math.floor(i/3), col = i%3;
       ctx.beginPath();
-      drawStar(-10 + i*10, -34, 4);
+      drawStar(-10 + col*10, -34 - row*8, 3.6);
       ctx.fillStyle = '#ffe14d'; ctx.fill();
       ctx.lineWidth=1; ctx.strokeStyle='#7a5c00'; ctx.stroke();
     }
@@ -584,13 +588,21 @@ function drawStar(cx,cy,r){
   ctx.closePath();
 }
 
-function drawSlayerFigure(color, dark, facing, level){
-  // cartoony humanoid: circle head, haori robe body, sword
+// swing: null = idle bob only, otherwise 0..1 progress of an attack animation
+function drawSlayerFigure(color, dark, facing, swing, legendary){
   const faceRight = Math.cos(facing) >= 0;
   ctx.save();
   ctx.scale(faceRight?1:-1, 1);
 
-  // legs
+  let swingAngle = 0, reach = 0;
+  if(swing !== null && swing !== undefined){
+    const s = Math.min(1, Math.max(0, swing));
+    const curve = Math.sin(s*Math.PI); // 0 -> 1 -> 0
+    swingAngle = curve * 2.1;
+    reach = curve * 6;
+  }
+
+  // legs (slight step during swing)
   ctx.fillStyle = '#2c2436';
   ctx.fillRect(-7,6,6,12);
   ctx.fillRect(2,6,6,12);
@@ -608,43 +620,54 @@ function drawSlayerFigure(color, dark, facing, level){
   ctx.fill();
   ctx.lineWidth=2.4; ctx.strokeStyle=dark; ctx.stroke();
 
-  // haori collar accent
   ctx.beginPath();
   ctx.moveTo(-4,-10); ctx.lineTo(0,2); ctx.lineTo(4,-10);
   ctx.strokeStyle='rgba(255,255,255,.7)'; ctx.lineWidth=2; ctx.stroke();
 
-  // belt
   ctx.fillStyle = dark;
   ctx.fillRect(-11,3,22,4);
 
-  // arms
+  // off arm
   ctx.strokeStyle = dark; ctx.lineWidth=5; ctx.lineCap='round';
   ctx.beginPath(); ctx.moveTo(-9,-6); ctx.lineTo(-15,4); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(9,-6); ctx.lineTo(15,-2); ctx.stroke();
 
-  // sword
+  // sword arm + blade, rotates through the swing
   ctx.save();
-  ctx.translate(15,-2); ctx.rotate(-0.6);
-  ctx.fillStyle='#e9e9f2';
-  ctx.fillRect(0,-2,24,4);
+  ctx.translate(9,-6);
+  ctx.rotate(-0.5 - swingAngle);
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(6+reach,-3); ctx.strokeStyle=dark; ctx.lineWidth=5; ctx.lineCap='round'; ctx.stroke();
+  ctx.translate(6+reach,-3);
+  ctx.fillStyle = legendary ? '#fff6d0' : '#e9e9f2';
+  ctx.fillRect(0,-2,24+reach,4);
   ctx.fillStyle='#3a3145';
   ctx.fillRect(-6,-3,7,6);
+  // slash trail while mid-swing
+  if(swing!==null && swing>0.08 && swing<0.92){
+    ctx.save();
+    ctx.globalAlpha = (1-Math.abs(swing-0.5)*2) * 0.55;
+    ctx.strokeStyle = legendary? '#ffdf6b' : color;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(-4,0, 22, -1.3, 0.9);
+    ctx.stroke();
+    ctx.restore();
+  }
   ctx.restore();
 
   // head
   ctx.beginPath(); ctx.arc(0,-20,9.5,0,Math.PI*2);
   ctx.fillStyle='#f3d9b8'; ctx.fill();
   ctx.lineWidth=2; ctx.strokeStyle=dark; ctx.stroke();
-  // hair
   ctx.beginPath(); ctx.arc(0,-24,9,Math.PI,0);
   ctx.fillStyle=dark; ctx.fill();
-  // eyes
   ctx.fillStyle='#221a2c';
   ctx.beginPath(); ctx.arc(3.5,-19,1.4,0,Math.PI*2); ctx.fill();
-  // headband for higher levels
-  if(level>=1){
-    ctx.fillStyle = level>=2? '#ffe14d' : '#fff';
+  if(legendary){
+    ctx.fillStyle = '#ffdf6b';
     ctx.fillRect(-9,-24,18,3);
+    // small halo flourish
+    ctx.beginPath(); ctx.ellipse(0,-30,10,3,0,0,Math.PI*2);
+    ctx.strokeStyle='rgba(255,223,107,.8)'; ctx.lineWidth=1.4; ctx.stroke();
   }
   ctx.restore();
 }
@@ -663,11 +686,10 @@ function fireProjectile(tower, target){
     dmg: tower.damage,
     def: tower.def
   });
-  // muzzle particles
   spawnParticles(tower.x, tower.y-10, tower.def.color, 3, {speed:40, life:0.25, size:2.5, grav:0});
 }
 
-function updateProjectiles(dt, enemies, onKill, gainGold){
+function updateProjectiles(dt, enemiesArr, gainGold){
   for(let i=projectiles.length-1;i>=0;i--){
     const p = projectiles[i];
     if(!p.target || p.target.dead){ projectiles.splice(i,1); continue; }
@@ -675,7 +697,7 @@ function updateProjectiles(dt, enemies, onKill, gainGold){
     const d = Math.hypot(dx,dy);
     const step = p.speed*dt;
     if(d <= step+4){
-      hitEnemy(p, p.target, enemies, gainGold);
+      hitEnemy(p, p.target, enemiesArr, gainGold);
       projectiles.splice(i,1);
       continue;
     }
@@ -683,47 +705,63 @@ function updateProjectiles(dt, enemies, onKill, gainGold){
   }
 }
 
-function hitEnemy(p, enemy, enemies, gainGold){
-  applyDamage(enemy, p.dmg, enemies, gainGold);
+function hitEnemy(p, enemy, enemiesArr, gainGold){
+  const def = p.def;
+  let dmg = p.dmg;
+  let wasCrit = false;
+  if(def.special === 'crit' && Math.random() < def.critChance){
+    dmg *= def.critMul; wasCrit = true;
+  }
+  applyDamage(enemy, dmg, enemiesArr, gainGold);
+  if(wasCrit) spawnFloater(enemy.x, enemy.y-32, 'CRIT!', '#ffe14d');
   spawnParticles(enemy.x, enemy.y-10, p.color, 6, {speed:70, life:0.35, size:3});
 
-  const def = p.def;
   if(def.special === 'splash'){
-    for(const e of enemies){
+    for(const e of enemiesArr){
       if(e===enemy || e.dead) continue;
       if(Math.hypot(e.x-enemy.x,e.y-enemy.y) <= def.splashR){
-        applyDamage(e, p.dmg*0.5, enemies, gainGold);
+        applyDamage(e, dmg*0.5, enemiesArr, gainGold);
       }
     }
   } else if(def.special === 'burn'){
     enemy.burn = { dps: def.burnDps, time: def.burnTime };
   } else if(def.special === 'slow'){
-    enemy.slowTime = def.slowTime; enemy.slowMul = def.slowMul;
+    if(!enemy.def.slowImmune){ enemy.slowTime = def.slowTime; enemy.slowMul = def.slowMul; }
   } else if(def.special === 'chain'){
     let chained = 0;
     let lastTarget = enemy;
     const already = new Set([enemy]);
     while(chained < def.chainCount){
       let next=null, bd=def.chainRange;
-      for(const e of enemies){
+      for(const e of enemiesArr){
         if(already.has(e) || e.dead) continue;
         const dd = Math.hypot(e.x-lastTarget.x, e.y-lastTarget.y);
         if(dd<=bd){ bd=dd; next=e; }
       }
       if(!next) break;
-      applyDamage(next, p.dmg*0.7, enemies, gainGold);
+      applyDamage(next, dmg*0.7, enemiesArr, gainGold);
       spawnParticles(next.x,next.y-10,'#ffe14d',5,{speed:60,life:.3,size:2.5});
       already.add(next); lastTarget=next; chained++;
     }
   } else if(def.special === 'pierce'){
-    // already hit main enemy; hit up to pierceCount-1 more along the line, nearest first
     const hitSet = new Set([enemy]);
-    const sorted = enemies.filter(e=>!e.dead && !hitSet.has(e))
+    const sorted = enemiesArr.filter(e=>!e.dead && !hitSet.has(e))
       .map(e=>({e,d:Math.hypot(e.x-enemy.x,e.y-enemy.y)}))
       .filter(o=>o.d<=60)
       .sort((a,b)=>a.d-b.d);
     for(let i=0;i<Math.min(def.pierceCount-1, sorted.length);i++){
-      applyDamage(sorted[i].e, p.dmg*0.6, enemies, gainGold);
+      applyDamage(sorted[i].e, dmg*0.6, enemiesArr, gainGold);
+    }
+  } else if(def.special === 'poison'){
+    if(!enemy.poison) enemy.poison = {stacks:0, dps:def.poisonDps, time:0};
+    enemy.poison.stacks = Math.min(def.maxStacks||5, enemy.poison.stacks+1);
+    enemy.poison.time = def.poisonTime;
+  } else if(def.special === 'radiant'){
+    for(const e of enemiesArr){
+      if(e===enemy || e.dead) continue;
+      if(Math.hypot(e.x-enemy.x,e.y-enemy.y) <= def.splashR){
+        applyDamage(e, dmg*0.6, enemiesArr, gainGold);
+      }
     }
   }
 }
@@ -742,6 +780,16 @@ function drawProjectiles(){
       ctx.fillRect(-4,-4,8,8);
     } else if(p.type==='fire'){
       ctx.beginPath(); ctx.arc(0,0,4,0,Math.PI*2); ctx.fill();
+    } else if(p.type==='fang'){
+      ctx.beginPath(); ctx.moveTo(-5,-3); ctx.lineTo(5,0); ctx.lineTo(-5,3); ctx.closePath(); ctx.fill();
+    } else if(p.type==='mist'){
+      ctx.globalAlpha=.75;
+      ctx.beginPath(); ctx.arc(0,0,5,0,Math.PI*2); ctx.fill();
+      ctx.globalAlpha=1;
+    } else if(p.type==='sun'){
+      ctx.save(); ctx.rotate(Math.PI/4);
+      ctx.beginPath(); drawStar(0,0,7); ctx.fillStyle='#ffdf6b'; ctx.fill();
+      ctx.restore();
     } else {
       ctx.beginPath(); ctx.ellipse(0,0,7,2.4,0,0,Math.PI*2); ctx.fill();
     }
@@ -753,20 +801,39 @@ function drawProjectiles(){
    ENEMIES
 ========================================================= */
 const ENEMY_TYPES = {
-  imp:    { name:'Imp',    hp:26,  speed:52, color:'#c0568a', dark:'#712f52', gold:4,  size:13 },
-  runner: { name:'Runner', hp:16,  speed:92, color:'#7a56c0', dark:'#452f71', gold:5,  size:11 },
-  brute:  { name:'Brute',  hp:80,  speed:34, color:'#4a7a3f', dark:'#2c4a26', gold:9,  size:17 },
-  shade:  { name:'Shade',  hp:40,  speed:60, color:'#3a3050', dark:'#1c1728', gold:7,  size:14, armor:0.25 },
-  boss:   { name:'Oni Warlord', hp:520, speed:30, color:'#b8302c', dark:'#5e1512', gold:80, size:26, boss:true }
+  imp:    { name:'Imp',      hp:26,  speed:52, color:'#c0568a', dark:'#712f52', gold:4,  size:13 },
+  runner: { name:'Runner',   hp:16,  speed:92, color:'#7a56c0', dark:'#452f71', gold:5,  size:11 },
+  brute:  { name:'Brute',    hp:80,  speed:34, color:'#4a7a3f', dark:'#2c4a26', gold:9,  size:17 },
+  shade:  { name:'Shade',    hp:40,  speed:60, color:'#3a3050', dark:'#1c1728', gold:7,  size:14, armor:0.25 },
+  swamp:  { name:'Bog Fiend',hp:65,  speed:28, color:'#5c6b3f', dark:'#33401f', gold:8,  size:16, regen:4, slowImmune:true }
 };
+function rankColor(rank){
+  const colors = {6:'#7a56c0',5:'#5670c0',4:'#c07a3f',3:'#c0473f',2:'#8c1f3f',1:'#3a0a12'};
+  return colors[rank] || '#333';
+}
+function makeEliteDef(rank){
+  const power = 7-rank; // rank6 -> power1 ... rank1 -> power6 (strongest)
+  return {
+    name:'Nightmare Rank '+rank, hp:150+power*115, speed:38+power*3,
+    color:rankColor(rank), dark:'#160e1c', gold:40+power*16, size:20+power*1.3,
+    regen:3+power, eliteRank:rank
+  };
+}
+function makeOverlordDef(waveNum){
+  const tier = Math.floor(waveNum/25);
+  return {
+    name:'The Progenitor', hp:1500+tier*750, speed:26, color:'#1c1024', dark:'#000000',
+    gold:250+tier*90, size:32, regen:11, boss:true, overlord:true
+  };
+}
 
 let enemies = [];
 let enemyIdCounter = 1;
 
 class Enemy{
-  constructor(type, hpMul, speedMul){
-    this.type=type;
-    this.def = ENEMY_TYPES[type];
+  constructor(type, hpMul, speedMul, customDef){
+    this.type = type;
+    this.def = customDef || ENEMY_TYPES[type];
     this.maxHp = Math.round(this.def.hp*hpMul);
     this.hp = this.maxHp;
     this.baseSpeed = this.def.speed*(speedMul||1);
@@ -775,7 +842,7 @@ class Enemy{
     this.x=pos.x; this.y=pos.y; this.angle=pos.angle;
     this.dead=false;
     this.reachedEnd=false;
-    this.burn=null;
+    this.burn=null; this.poison=null;
     this.slowTime=0; this.slowMul=1;
     this.id = enemyIdCounter++;
     this.hitFlash=0;
@@ -785,11 +852,24 @@ class Enemy{
     this.bobT += dt;
     if(this.hitFlash>0) this.hitFlash -= dt;
     let speed = this.baseSpeed;
-    if(this.slowTime>0){ this.slowTime -= dt; speed *= this.slowMul; }
+    if(this.slowTime>0 && !this.def.slowImmune){ this.slowTime -= dt; speed *= this.slowMul; }
+    let dotActive = false;
     if(this.burn && this.burn.time>0){
       this.hp -= this.burn.dps*dt;
       this.burn.time -= dt;
+      dotActive = true;
       if(Math.random()<0.3) spawnParticles(this.x,this.y-8,'#ff6a3f',1,{speed:20,life:.3,size:2,grav:-20});
+    }
+    if(this.poison && this.poison.time>0){
+      this.hp -= this.poison.dps*this.poison.stacks*dt;
+      this.poison.time -= dt;
+      dotActive = true;
+      if(Math.random()<0.3) spawnParticles(this.x,this.y-8,'#7fd94a',1,{speed:15,life:.3,size:2,grav:-10});
+    } else if(this.poison){
+      this.poison.stacks = 0;
+    }
+    if(this.def.regen && !dotActive){
+      this.hp = Math.min(this.maxHp, this.hp + this.def.regen*dt);
     }
     this.traveled += speed*dt;
     const pos = pointAtDistance(this.traveled);
@@ -805,38 +885,32 @@ class Enemy{
     ctx.scale(faceRight?1:-1,1);
 
     const sz = this.def.size;
-    // body blob
     ctx.beginPath();
     ctx.ellipse(0, 0, sz*0.85, sz, 0,0, Math.PI*2);
     ctx.fillStyle = this.hitFlash>0 ? '#ffffff' : this.def.color;
     ctx.fill();
     ctx.lineWidth = 2.2; ctx.strokeStyle = this.def.dark; ctx.stroke();
 
-    // belly
     ctx.beginPath();
     ctx.ellipse(0, sz*0.25, sz*0.5, sz*0.55, 0,0,Math.PI*2);
     ctx.fillStyle='rgba(255,255,255,.18)'; ctx.fill();
 
-    // horns
     ctx.fillStyle = this.def.dark;
     ctx.beginPath();
     ctx.moveTo(-sz*0.5,-sz*0.7); ctx.lineTo(-sz*0.15,-sz*1.35); ctx.lineTo(-sz*0.05,-sz*0.6); ctx.closePath(); ctx.fill();
     ctx.beginPath();
     ctx.moveTo(sz*0.5,-sz*0.7); ctx.lineTo(sz*0.15,-sz*1.35); ctx.lineTo(sz*0.05,-sz*0.6); ctx.closePath(); ctx.fill();
 
-    // eyes (angry)
-    ctx.fillStyle = this.def.boss? '#ffe14d' : '#fff';
+    ctx.fillStyle = (this.def.boss || this.def.eliteRank) ? '#ffe14d' : '#fff';
     ctx.beginPath(); ctx.ellipse(sz*0.28,-sz*0.15,sz*0.22,sz*0.16,0,0,Math.PI*2); ctx.fill();
     ctx.beginPath(); ctx.ellipse(-sz*0.08,-sz*0.15,sz*0.22,sz*0.16,0,0,Math.PI*2); ctx.fill();
     ctx.fillStyle = '#c0201a';
     ctx.beginPath(); ctx.arc(sz*0.32,-sz*0.15,sz*0.09,0,Math.PI*2); ctx.fill();
     ctx.beginPath(); ctx.arc(-sz*0.04,-sz*0.15,sz*0.09,0,Math.PI*2); ctx.fill();
-    // eyebrows
     ctx.strokeStyle = this.def.dark; ctx.lineWidth=2;
     ctx.beginPath(); ctx.moveTo(sz*0.12,-sz*0.4); ctx.lineTo(sz*0.42,-sz*0.32); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(-sz*0.28,-sz*0.32); ctx.lineTo(sz*0.02,-sz*0.4); ctx.stroke();
 
-    // mouth
     ctx.beginPath(); ctx.arc(sz*0.1, sz*0.1, sz*0.18, 0.15*Math.PI, 0.85*Math.PI);
     ctx.strokeStyle=this.def.dark; ctx.lineWidth=2; ctx.stroke();
 
@@ -844,12 +918,24 @@ class Enemy{
       ctx.strokeStyle='rgba(150,150,180,.8)'; ctx.lineWidth=1.4;
       ctx.beginPath(); ctx.ellipse(0,0,sz*0.9,sz*1.05,0,0,Math.PI*2); ctx.stroke();
     }
+    if(this.def.eliteRank || this.def.overlord){
+      ctx.strokeStyle='rgba(255,80,60,.7)'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.ellipse(0,0,sz*1.05,sz*1.2,0,0,Math.PI*2); ctx.stroke();
+    }
+    if(this.def.slowImmune){
+      ctx.strokeStyle='rgba(150,180,100,.7)'; ctx.lineWidth=1.2; ctx.setLineDash([3,3]);
+      ctx.beginPath(); ctx.ellipse(0,0,sz*0.95,sz*1.1,0,0,Math.PI*2); ctx.stroke();
+      ctx.setLineDash([]);
+    }
     ctx.restore();
 
-    // hp bar
     const barW = sz*2.1;
     ctx.save();
-    ctx.translate(this.x - barW/2, this.y - sz - 12);
+    ctx.translate(this.x - barW/2, this.y - sz - (this.def.eliteRank||this.def.overlord? 20:12));
+    if(this.def.eliteRank || this.def.overlord){
+      ctx.font='bold 10px Trebuchet MS'; ctx.fillStyle='#ffcf4d'; ctx.textAlign='center';
+      ctx.fillText(this.def.name, barW/2, -3);
+    }
     ctx.fillStyle='rgba(0,0,0,.5)';
     ctx.fillRect(0,0,barW,5);
     const pct = Math.max(0,this.hp/this.maxHp);
@@ -877,7 +963,7 @@ function applyDamage(enemy, dmg, enemiesArr, gainGold){
    GAME STATE
 ========================================================= */
 const state = {
-  gold: 150,
+  gold: 60,
   lives: 20,
   wave: 0,
   maxWave: 0,
@@ -897,19 +983,24 @@ function gainGold(n){ state.gold += n; refreshHud(); }
 
 function generateWave(waveNum){
   const q = [];
-  const n = 8 + Math.floor(waveNum*1.6);
-  const hpMul = 1 + waveNum*0.16;
-  const speedMul = 1 + Math.min(waveNum*0.01, 0.35);
+  const n = 8 + Math.floor(waveNum*1.5);
+  const hpMul = 1 + waveNum*0.15;
+  const speedMul = 1 + Math.min(waveNum*0.008, 0.3);
   const pool = ['imp','imp','runner'];
   if(waveNum>=3) pool.push('brute');
-  if(waveNum>=5) pool.push('shade');
+  if(waveNum>=4) pool.push('swamp');
+  if(waveNum>=6) pool.push('shade');
 
   for(let i=0;i<n;i++){
     const t = pool[Math.floor(Math.random()*pool.length)];
-    q.push({type:t, hpMul, speedMul, delay: 0.55});
+    q.push({type:t, hpMul, speedMul, delay: 0.5});
   }
-  if(waveNum % 5 === 0){
-    q.push({type:'boss', hpMul: 1+ (waveNum/5)*0.5, speedMul:1, delay:0.9});
+  if(waveNum % 25 === 0){
+    q.push({type:'overlord', hpMul:1, speedMul:1, delay:1.2, def:makeOverlordDef(waveNum)});
+  } else if(waveNum % 5 === 0){
+    const rankIndex = Math.min(6, Math.floor(waveNum/5));
+    const rank = Math.max(1, 7-rankIndex);
+    q.push({type:'elite', hpMul:1, speedMul:1, delay:1.0, def:makeEliteDef(rank)});
   }
   return q;
 }
@@ -921,7 +1012,10 @@ function startNextWave(){
   state.spawnQueue = generateWave(state.wave);
   state.spawnTimer = 0;
   state.waveInProgress = true;
-  showWaveBanner('WAVE ' + state.wave + (state.wave%5===0? '  ⚠ BOSS':''));
+  let banner = 'WAVE ' + state.wave;
+  if(state.wave % 25 === 0) banner += '  ☠ THE PROGENITOR RISES';
+  else if(state.wave % 5 === 0) banner += '  ⚠ NIGHTMARE GENERAL';
+  showWaveBanner(banner);
   refreshHud();
 }
 
@@ -931,7 +1025,7 @@ function showWaveBanner(text){
   el.textContent = text;
   el.classList.add('show');
   clearTimeout(bannerTimeout);
-  bannerTimeout = setTimeout(()=>el.classList.remove('show'), 1800);
+  bannerTimeout = setTimeout(()=>el.classList.remove('show'), 2000);
 }
 
 /* =========================================================
@@ -950,12 +1044,11 @@ function loop(now){
 }
 
 function update(dt){
-  // spawn logic
   if(state.waveInProgress){
     state.spawnTimer -= dt;
     if(state.spawnTimer<=0 && state.spawnQueue.length>0){
       const spec = state.spawnQueue.shift();
-      const e = new Enemy(spec.type, spec.hpMul, spec.speedMul);
+      const e = new Enemy(spec.type, spec.hpMul, spec.speedMul, spec.def);
       enemies.push(e);
       state.spawnTimer = spec.delay;
     }
@@ -969,7 +1062,7 @@ function update(dt){
   }
 
   for(const t of towers) t.update(dt, enemies, gainGold);
-  updateProjectiles(dt, enemies, null, gainGold);
+  updateProjectiles(dt, enemies, gainGold);
 
   for(let i=enemies.length-1;i>=0;i--){
     const e = enemies[i];
@@ -993,7 +1086,6 @@ function render(){
   ctx.clearRect(0,0,GAME_W,GAME_H);
   drawBackground();
 
-  // range circle preview for selected build type near hover, and selected tower
   if(state.selectedTower){
     ctx.save();
     ctx.beginPath(); ctx.arc(state.selectedTower.x, state.selectedTower.y, state.selectedTower.range, 0, Math.PI*2);
@@ -1002,7 +1094,6 @@ function render(){
     ctx.restore();
   }
 
-  // sort towers+enemies by y for pseudo depth
   const drawables = [...towers.map(t=>({y:t.y,d:t})), ...enemies.map(e=>({y:e.y,d:e}))];
   drawables.sort((a,b)=>a.y-b.y);
   for(const item of drawables) item.d.draw();
@@ -1010,6 +1101,7 @@ function render(){
   drawProjectiles();
   drawParticles();
   drawFloaters();
+  drawPlacementGhost();
 }
 
 function triggerGameOver(){
@@ -1042,7 +1134,11 @@ function buildShop(){
   for(const key of TOWER_ORDER){
     const def = TOWER_TYPES[key];
     const card = document.createElement('div');
-    card.className = 'towerCard' + (state.selectedTowerType===key?' selected':'') + (state.gold<def.cost?' disabled':'');
+    card.className = 'towerCard'
+      + (state.selectedTowerType===key?' selected':'')
+      + (state.gold<def.cost?' disabled':'')
+      + (def.legendary?' legendary':'');
+    card.title = def.desc;
     card.innerHTML = `${towerIconSvg(def)}<span class="tname">${def.name.split(' ')[0]}</span><span class="tcost">${def.cost}g</span>`;
     card.onclick = ()=>{
       state.selectedTower = null; document.getElementById('infoPanel').style.display='none';
@@ -1059,9 +1155,6 @@ function towerIconSvg(def){
     <rect x="17" y="20" width="6" height="10" fill="${def.dark}"/></svg>`;
 }
 
-document.getElementById('shop').style.display='flex';
-
-// place tower / select tower on canvas click
 function stageToGame(clientX, clientY){
   const rect = canvas.getBoundingClientRect();
   const sx = GAME_W/rect.width, sy = GAME_H/rect.height;
@@ -1071,9 +1164,8 @@ function stageToGame(clientX, clientY){
 function handleTap(clientX, clientY){
   const {x,y} = stageToGame(clientX, clientY);
 
-  // check tower click first (existing towers)
   for(const t of towers){
-    if(Math.hypot(t.x-x, t.y-y) < 22){
+    if(Math.hypot(t.x-x, t.y-y) < 20){
       state.selectedTowerType = null; buildShop();
       state.selectedTower = t;
       updateInfoPanel();
@@ -1081,20 +1173,20 @@ function handleTap(clientX, clientY){
     }
   }
 
-  const pad = padAt(x,y);
-  if(pad && state.selectedTowerType){
+  if(state.selectedTowerType){
     const def = TOWER_TYPES[state.selectedTowerType];
-    if(padFree(pad) && state.gold>=def.cost){
+    if(state.gold>=def.cost && isValidPlacement(x,y)){
       state.gold -= def.cost;
-      const t = new Tower(state.selectedTowerType, pad);
+      const t = new Tower(state.selectedTowerType, x, y);
       towers.push(t);
-      spawnParticles(pad.x,pad.y-10,def.color,10,{speed:70,life:.4});
+      spawnParticles(x,y-10,def.color,10,{speed:70,life:.4});
       refreshHud();
+    } else {
+      spawnParticles(x,y,'#ff5d5d',6,{speed:50,life:.3,size:3});
     }
     return;
   }
 
-  // clicked empty space -> deselect
   state.selectedTower = null;
   document.getElementById('infoPanel').style.display='none';
 }
@@ -1104,43 +1196,59 @@ canvas.addEventListener('touchstart', (e)=>{
   if(e.touches.length){ handleTap(e.touches[0].clientX, e.touches[0].clientY); }
   e.preventDefault();
 }, {passive:false});
+canvas.addEventListener('mousemove', (e)=>{ hoverPos = stageToGame(e.clientX, e.clientY); });
+canvas.addEventListener('mouseleave', ()=>{ hoverPos = null; });
+canvas.addEventListener('touchmove', (e)=>{
+  if(e.touches.length){ hoverPos = stageToGame(e.touches[0].clientX, e.touches[0].clientY); }
+}, {passive:true});
 
 function updateInfoPanel(){
   const t = state.selectedTower;
   const panel = document.getElementById('infoPanel');
   if(!t){ panel.style.display='none'; return; }
-  const rect = canvas.getBoundingClientRect();
   const stageRect = document.getElementById('stage').getBoundingClientRect();
   const sx = stageRect.width/GAME_W, sy = stageRect.height/GAME_H;
   let left = t.x*sx + 26, top = t.y*sy - 40;
-  if(left > stageRect.width-160) left = t.x*sx - 176;
+  if(left > stageRect.width-190) left = t.x*sx - 196;
   if(top < 4) top = 4;
+  if(top > stageRect.height-160) top = stageRect.height-160;
   panel.style.left = left+'px';
   panel.style.top = top+'px';
   panel.style.display='block';
-  const upCost = t.upgradeCost;
+
+  const dmgCost = t.upgradeCost('dmg');
+  const rangeCost = t.upgradeCost('range');
+  const speedCost = t.upgradeCost('speed');
+
   panel.innerHTML = `
-    <h4>${t.def.name} · Lv${t.level+1}</h4>
-    <div class="row"><span>Damage</span><span>${Math.round(t.damage)}</span></div>
-    <div class="row"><span>Range</span><span>${Math.round(t.range)}</span></div>
-    <div class="row"><span>Speed</span><span>${(1/t.rate).toFixed(2)}/s</span></div>
+    <h4>${t.def.name}</h4>
+    <div class="row"><span>Damage</span><span>${Math.round(t.damage)} (Lv${t.dmgLevel+1})</span></div>
+    <div class="row"><span>Range</span><span>${Math.round(t.range)} (Lv${t.rangeLevel+1})</span></div>
+    <div class="row"><span>Atk Speed</span><span>${(1/t.rate).toFixed(2)}/s (Lv${t.speedLevel+1})</span></div>
     <div class="btnrow">
-      <button class="btn-up" id="btnUp" ${(!upCost || state.gold<upCost)?'disabled':''}>${upCost? 'Upgrade ('+upCost+'g)':'MAX'}</button>
-      <button class="btn-sell" id="btnSell">Sell (${t.sellValue}g)</button>
+      <button class="btn-up" id="upDmg" ${(!dmgCost||state.gold<dmgCost)?'disabled':''}>DMG${dmgCost? '<br>+'+dmgCost+'g':'<br>MAX'}</button>
+      <button class="btn-up" id="upRange" ${(!rangeCost||state.gold<rangeCost)?'disabled':''}>RNG${rangeCost? '<br>+'+rangeCost+'g':'<br>MAX'}</button>
+      <button class="btn-up" id="upSpeed" ${(!speedCost||state.gold<speedCost)?'disabled':''}>SPD${speedCost? '<br>+'+speedCost+'g':'<br>MAX'}</button>
     </div>
-    <div class="btnrow"><button class="btn-close" id="btnCloseInfo">Close</button></div>
+    <div class="btnrow">
+      <button class="btn-sell" id="btnSell">Sell (${t.sellValue}g)</button>
+      <button class="btn-close" id="btnCloseInfo">Close</button>
+    </div>
   `;
-  document.getElementById('btnUp').onclick = ()=>{
-    if(t.upgradeCost && state.gold>=t.upgradeCost){
-      state.gold -= t.upgradeCost;
-      t.level++;
+  const tryUpgrade = (track)=>{
+    const cost = t.upgradeCost(track);
+    if(cost!==null && state.gold>=cost){
+      state.gold -= cost;
+      t.applyUpgrade(track);
       spawnParticles(t.x,t.y-10,'#ffe14d',12,{speed:80,life:.4});
       refreshHud();
     }
   };
+  document.getElementById('upDmg').onclick = ()=>tryUpgrade('dmg');
+  document.getElementById('upRange').onclick = ()=>tryUpgrade('range');
+  document.getElementById('upSpeed').onclick = ()=>tryUpgrade('speed');
   document.getElementById('btnSell').onclick = ()=>{
     state.gold += t.sellValue;
-    t.pad.tower = null;
     towers = towers.filter(x=>x!==t);
     state.selectedTower = null;
     panel.style.display='none';
@@ -1152,7 +1260,6 @@ function updateInfoPanel(){
   };
 }
 
-/* ---- top bar buttons ---- */
 document.getElementById('btnStartWave').onclick = startNextWave;
 document.getElementById('btnSpeed').onclick = function(){
   state.speedMul = state.speedMul===1? 2 : 1;
@@ -1180,8 +1287,7 @@ document.getElementById('btnRestart').onclick = function(){
 
 function resetGame(){
   towers = []; enemies = []; projectiles = []; particles.length=0; floaters.length=0;
-  for(const p of PADS) p.tower = null;
-  state.gold = 150; state.lives=20; state.wave=0; state.maxWave=0;
+  state.gold = 60; state.lives=20; state.wave=0; state.maxWave=0;
   state.running=false; state.paused=false; state.speedMul=1;
   state.selectedTowerType=null; state.selectedTower=null;
   state.waveInProgress=false; state.spawnQueue=[]; state.spawnTimer=0;
@@ -1193,7 +1299,6 @@ function resetGame(){
 
 document.getElementById('bestWaveLabel').textContent = state.bestWave;
 
-/* boot */
 resetGame();
 requestAnimationFrame(loop);
 
