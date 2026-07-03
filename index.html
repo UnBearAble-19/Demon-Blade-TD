@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Blade Watch: Demon Ward TD</title>
+<title>Demon Blade: TD1</title>
 <style>
   :root{
     --ink:#241a2e;
@@ -151,6 +151,28 @@
   .btn-sell{background:var(--accent1); color:#fff; font-size:11px;}
   .btn-close{background:#555;color:#fff; font-size:11px;}
 
+  #supportPanel{
+    position:absolute; top:44px; right:6px;
+    background:rgba(20,12,25,.97);
+    border:2px solid var(--accent5);
+    border-radius:10px;
+    padding:10px 12px;
+    pointer-events:auto;
+    font-size:12px;
+    width:220px;
+    z-index:8;
+  }
+  #supportPanel h4{margin:0 0 6px; color:var(--accent5); font-size:13px;}
+  #supportPanel .srow{display:flex; align-items:center; justify-content:space-between; margin:5px 0; gap:6px;}
+  #supportPanel .slabel{flex:1;}
+  #supportPanel .slevel{font-size:10px; color:#c9bfe6;}
+  #supportPanel button.supUp{
+    background:var(--accent5); color:#1a1030; border:none; border-radius:6px;
+    padding:4px 8px; font-weight:bold; cursor:pointer; font-size:10px;
+  }
+  #supportPanel button.supUp:disabled{background:#555; color:#999; cursor:not-allowed;}
+  #supportPanel .btn-close{width:100%; margin-top:4px; padding:5px;}
+
   /* ---- overlays ---- */
   .overlay{
     position:absolute; inset:0;
@@ -210,6 +232,7 @@
         <div id="topBtns">
           <button class="iconbtn" id="btnSpeed">×1</button>
           <button class="iconbtn" id="btnPause">⏸</button>
+          <button class="iconbtn" id="btnSupport">🏮 0</button>
           <button class="iconbtn" id="btnStartWave">Start Wave ▶</button>
         </div>
       </div>
@@ -219,6 +242,8 @@
       <div id="shop" class="clickable"></div>
 
       <div id="infoPanel"></div>
+
+      <div id="supportPanel" class="hidden"></div>
 
       <div id="startOverlay" class="overlay">
         <div class="title">BLADE WATCH</div>
@@ -388,7 +413,7 @@ function drawBackground(){
 function drawPlacementGhost(){
   if(!state.selectedTowerType || !hoverPos) return;
   const def = TOWER_TYPES[state.selectedTowerType];
-  const valid = isValidPlacement(hoverPos.x, hoverPos.y) && state.gold>=def.cost;
+  const valid = isValidPlacement(hoverPos.x, hoverPos.y) && state.gold>=effectiveCost(def);
   ctx.save();
   ctx.beginPath();
   ctx.arc(hoverPos.x, hoverPos.y, def.range, 0, Math.PI*2);
@@ -473,37 +498,65 @@ const TOWER_TYPES = {
   wind:    { name:'Wind Slayer',    cost:135, color:'#6bd48a', dark:'#2f8a4c', range:150, damage:13, rate:0.85, proj:'gale',   special:'pierce', pierceCount:3, desc:'Long reach, cuts through multiple foes.' },
   poison:  { name:'Serpent Slayer', cost:150, color:'#7fd94a', dark:'#355c1c', range:110, damage:5,  rate:0.5,  proj:'fang',   special:'poison', poisonDps:4, poisonTime:3, maxStacks:5, desc:'Venom that stacks the longer the fight goes.' },
   mist:    { name:'Mist Slayer',    cost:170, color:'#8fb7c9', dark:'#3d5a66', range:130, damage:16, rate:0.6,  proj:'mist',   special:'crit',   critChance:0.3, critMul:2.2, desc:'Strikes from the fog — high crit chance.' },
-  sun:     { name:'Sun Slayer',     cost:480, color:'#ffdf6b', dark:'#8a6a00', range:140, damage:55, rate:0.5,  proj:'sun',    special:'radiant',splashR:40, legendary:true, desc:'The strongest style ever recorded.' }
+  sound:   { name:'Sound Slayer',   cost:200, color:'#c94fd6', dark:'#5c1c66', range:100, damage:9,  rate:0.55, proj:'wave',   special:'stun',   stunChance:0.25, stunTime:0.6, desc:'Resonant strikes that can stun demons briefly.' },
+  beast:   { name:'Beast Slayer',   cost:210, color:'#e0793f', dark:'#7a3a12', range:95,  damage:11, rate:0.32, proj:'claw',   special:'frenzy', frenzyRange:80, desc:'Wild, instinctive strikes hitting two foes at once.' },
+  bloom:   { name:'Bloom Slayer',   cost:160, color:'#ff8fc9', dark:'#8a1c56', range:115, damage:7,  rate:0.5,  proj:'petal',  special:'weaken', weakenMul:1.35, weakenTime:3, desc:'Toxic blossoms that make demons take more damage.' },
+  moon:    { name:'Moon Slayer',    cost:260, color:'#c9c9f2', dark:'#3a3a66', range:125, damage:17, rate:0.55, proj:'crescent', special:'execute', executeThreshold:0.15, executeBonus:3, desc:'Finishing strikes that surge against near-dead demons.' },
+  sun:     { name:'Sun Slayer',     cost:480, color:'#ffdf6b', dark:'#8a6a00', range:140, damage:55, rate:0.5,  proj:'sun',    special:'radiant',splashR:40, legendary:true, desc:'The strongest style ever recorded. Its blade stays gold and white — that is its mark.' }
 };
-const TOWER_ORDER = ['water','flame','thunder','stone','wind','poison','mist','sun'];
+const TOWER_ORDER = ['water','flame','thunder','stone','wind','poison','mist','sound','beast','bloom','moon','sun'];
+const MAX_LEGENDARY = 2;
+const BLADE_COLORS = ['#3fb7ff','#ff6a3f','#ffe14d','#9c8f7a','#6bd48a','#7fd94a','#8fb7c9','#c94fd6','#e0793f','#ff8fc9','#c9c9f2','#ff5d5d','#ffffff'];
+function darkenColor(hex, amt){
+  const c = hex.replace('#','');
+  const num = parseInt(c,16);
+  let r=(num>>16)&255, g=(num>>8)&255, b=num&255;
+  r=Math.max(0,Math.round(r*(1-amt))); g=Math.max(0,Math.round(g*(1-amt))); b=Math.max(0,Math.round(b*(1-amt)));
+  return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
 
 let towers = [];
 let towerIdCounter = 1;
 let hoverPos = null;
 
 class Tower{
-  constructor(type, x, y){
+  constructor(type, x, y, spent){
     this.type = type;
     this.def = TOWER_TYPES[type];
     this.x = x; this.y = y;
     this.dmgLevel = 0; this.rangeLevel = 0; this.speedLevel = 0;
-    this.totalSpent = this.def.cost;
+    this.totalSpent = spent!==undefined? spent : this.def.cost;
     this.cooldown = 0;
     this.id = towerIdCounter++;
     this.facing = -Math.PI/2;
     this.animT = Math.random()*10;
     this.swingT = 0;
     this.swingDur = 0.28;
+    this.customColor = null;
+    this.awakened = false;
   }
-  get range(){ return this.def.range * (1 + 0.09*this.rangeLevel); }
-  get damage(){ return this.def.damage * (1 + 0.22*this.dmgLevel); }
-  get rate(){ return this.def.rate * Math.pow(0.9, this.speedLevel); }
+  get maxedOut(){ return this.dmgLevel>=4 && this.rangeLevel>=4 && this.speedLevel>=4; }
+  get range(){
+    let r = this.def.range * (1 + 0.09*this.rangeLevel);
+    if(this.awakened) r *= 1.15;
+    return r;
+  }
+  get damage(){
+    let d = this.def.damage * (1 + 0.22*this.dmgLevel) * (1 + state.metaDamage*0.04);
+    if(this.awakened) d *= 1.4;
+    return d;
+  }
+  get rate(){
+    let r = this.def.rate * Math.pow(0.9, this.speedLevel) * Math.pow(0.96, state.metaSpeed);
+    if(this.awakened) r *= 0.85;
+    return r;
+  }
   get totalLevel(){ return this.dmgLevel + this.rangeLevel + this.speedLevel; }
   upgradeCost(track){
     const lvl = track==='dmg'? this.dmgLevel : track==='range'? this.rangeLevel : this.speedLevel;
     if(lvl>=4) return null;
     const mul = track==='dmg'? 0.4 : track==='range'? 0.28 : 0.34;
-    return Math.round(this.def.cost*mul*(lvl+1));
+    return Math.round(this.def.cost*mul*(lvl+1)*(1-state.metaCost*0.03));
   }
   applyUpgrade(track){
     const cost = this.upgradeCost(track);
@@ -511,6 +564,17 @@ class Tower{
     if(track==='dmg') this.dmgLevel++;
     else if(track==='range') this.rangeLevel++;
     else this.speedLevel++;
+    this.totalSpent += cost;
+    return cost;
+  }
+  get awakenCost(){
+    if(this.awakened || !this.maxedOut) return null;
+    return Math.round(this.def.cost*2*(1-state.metaCost*0.03));
+  }
+  awaken(){
+    const cost = this.awakenCost;
+    if(cost===null) return null;
+    this.awakened = true;
     this.totalSpent += cost;
     return cost;
   }
@@ -547,6 +611,9 @@ class Tower{
     const bob = Math.sin(this.animT*3)*1.5;
     ctx.translate(0, bob);
 
+    const drawColor = this.def.legendary ? this.def.color : (this.customColor || this.def.color);
+    const drawDark = this.def.legendary ? this.def.dark : (this.customColor ? darkenColor(this.customColor,0.5) : this.def.dark);
+
     if(this.def.legendary){
       ctx.save();
       const pulse = 0.5+Math.sin(this.animT*2.4)*0.15;
@@ -556,14 +623,25 @@ class Tower{
       rg.addColorStop(1,'rgba(255,223,107,0)');
       ctx.fillStyle = rg; ctx.fill();
       ctx.restore();
+    } else if(this.awakened){
+      ctx.save();
+      const pulse = 0.5+Math.sin(this.animT*2.8)*0.2;
+      ctx.beginPath(); ctx.arc(0,2,26,0,Math.PI*2);
+      const rg = ctx.createRadialGradient(0,2,4,0,2,26);
+      rg.addColorStop(0, drawColor+'99');
+      rg.addColorStop(1, drawColor+'00');
+      ctx.fillStyle = rg; ctx.fill();
+      ctx.restore();
     } else if(this.totalLevel>=8){
       ctx.beginPath(); ctx.arc(0,4,24,0,Math.PI*2);
-      ctx.strokeStyle = this.def.color; ctx.globalAlpha=.5; ctx.lineWidth=2; ctx.stroke();
+      ctx.strokeStyle = drawColor; ctx.globalAlpha=.5; ctx.lineWidth=2; ctx.stroke();
       ctx.globalAlpha=1;
     }
 
+    if(this.awakened) ctx.scale(1.12,1.12);
+
     const swingProgress = this.swingDur>0 ? 1 - (this.swingT/this.swingDur) : 1;
-    drawSlayerFigure(this.def.color, this.def.dark, this.facing, this.swingT>0? swingProgress:null, this.def.legendary);
+    drawSlayerFigure(drawColor, drawDark, this.facing, this.swingT>0? swingProgress:null, this.def.legendary || this.awakened);
 
     const pipCount = Math.min(6, this.totalLevel);
     for(let i=0;i<pipCount;i++){
@@ -712,6 +790,9 @@ function hitEnemy(p, enemy, enemiesArr, gainGold){
   if(def.special === 'crit' && Math.random() < def.critChance){
     dmg *= def.critMul; wasCrit = true;
   }
+  if(def.special === 'execute' && enemy.hp/enemy.maxHp <= def.executeThreshold){
+    dmg *= def.executeBonus; wasCrit = true;
+  }
   applyDamage(enemy, dmg, enemiesArr, gainGold);
   if(wasCrit) spawnFloater(enemy.x, enemy.y-32, 'CRIT!', '#ffe14d');
   spawnParticles(enemy.x, enemy.y-10, p.color, 6, {speed:70, life:0.35, size:3});
@@ -727,6 +808,21 @@ function hitEnemy(p, enemy, enemiesArr, gainGold){
     enemy.burn = { dps: def.burnDps, time: def.burnTime };
   } else if(def.special === 'slow'){
     if(!enemy.def.slowImmune){ enemy.slowTime = def.slowTime; enemy.slowMul = def.slowMul; }
+  } else if(def.special === 'stun'){
+    if(!enemy.def.slowImmune && Math.random() < def.stunChance){
+      enemy.stunTime = def.stunTime;
+      spawnFloater(enemy.x, enemy.y-32, 'STUN', '#c94fd6');
+    }
+  } else if(def.special === 'weaken'){
+    enemy.weaken = { mul: def.weakenMul, time: def.weakenTime };
+  } else if(def.special === 'frenzy'){
+    let second = null, bd = def.frenzyRange;
+    for(const e of enemiesArr){
+      if(e===enemy || e.dead) continue;
+      const dd = Math.hypot(e.x-enemy.x, e.y-enemy.y);
+      if(dd<=bd){ bd=dd; second=e; }
+    }
+    if(second) applyDamage(second, dmg*0.85, enemiesArr, gainGold);
   } else if(def.special === 'chain'){
     let chained = 0;
     let lastTarget = enemy;
@@ -790,6 +886,17 @@ function drawProjectiles(){
       ctx.save(); ctx.rotate(Math.PI/4);
       ctx.beginPath(); drawStar(0,0,7); ctx.fillStyle='#ffdf6b'; ctx.fill();
       ctx.restore();
+    } else if(p.type==='wave'){
+      ctx.strokeStyle=p.color; ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.arc(0,0,6,-0.9,0.9); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0,0,3,-0.9,0.9); ctx.stroke();
+    } else if(p.type==='claw'){
+      ctx.strokeStyle=p.color; ctx.lineWidth=2.5; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(-5,-4); ctx.lineTo(5,0); ctx.moveTo(-5,0); ctx.lineTo(5,4); ctx.stroke();
+    } else if(p.type==='petal'){
+      ctx.beginPath(); ctx.ellipse(0,0,6,3,0,0,Math.PI*2); ctx.fill();
+    } else if(p.type==='crescent'){
+      ctx.beginPath(); ctx.arc(2,0,6,0.6,5.6); ctx.strokeStyle=p.color; ctx.lineWidth=3; ctx.stroke();
     } else {
       ctx.beginPath(); ctx.ellipse(0,0,7,2.4,0,0,Math.PI*2); ctx.fill();
     }
@@ -809,23 +916,33 @@ const ENEMY_TYPES = {
 };
 function rankColor(rank){
   const colors = {6:'#7a56c0',5:'#5670c0',4:'#c07a3f',3:'#c0473f',2:'#8c1f3f',1:'#3a0a12'};
-  return colors[rank] || '#333';
+  return colors[rank] || '#1a0810';
 }
-function makeEliteDef(rank){
-  const power = 7-rank; // rank6 -> power1 ... rank1 -> power6 (strongest)
+// Elite "Nightmare Rank" demons count down from 6 (weakest) to 1 (strongest) as waves climb,
+// then keep growing indefinitely past rank 1 so late-game play never plateaus.
+function makeEliteDef(waveNum){
+  const rankIndex = Math.min(6, Math.floor(waveNum/5));
+  const rank = Math.max(1, 7-rankIndex);
+  const power = 7-rank;
+  const overflow = Math.max(0, Math.floor(waveNum/5)-6);
+  const growth = 1 + overflow*0.35 + waveNum*0.01;
   return {
-    name:'Nightmare Rank '+rank, hp:150+power*115, speed:38+power*3,
-    color:rankColor(rank), dark:'#160e1c', gold:40+power*16, size:20+power*1.3,
-    regen:3+power, eliteRank:rank
+    name:'Nightmare Rank '+rank + (overflow>0? ' †':''),
+    hp: Math.round((150+power*115)*growth),
+    speed: Math.min(38+power*3+overflow*1.5, 95),
+    color:rankColor(rank), dark:'#160e1c',
+    gold: Math.round((40+power*16)*(1+overflow*0.2)),
+    size:20+power*1.3, regen:3+power+overflow, eliteRank:rank, rewind:true
   };
 }
 function makeOverlordDef(waveNum){
   const tier = Math.floor(waveNum/25);
   return {
     name:'The Progenitor', hp:1500+tier*750, speed:26, color:'#1c1024', dark:'#000000',
-    gold:250+tier*90, size:32, regen:11, boss:true, overlord:true
+    gold:250+tier*90, size:32, regen:11, boss:true, overlord:true, rewind:true
   };
 }
+
 
 let enemies = [];
 let enemyIdCounter = 1;
@@ -842,8 +959,9 @@ class Enemy{
     this.x=pos.x; this.y=pos.y; this.angle=pos.angle;
     this.dead=false;
     this.reachedEnd=false;
-    this.burn=null; this.poison=null;
-    this.slowTime=0; this.slowMul=1;
+    this.burn=null; this.poison=null; this.weaken=null;
+    this.slowTime=0; this.slowMul=1; this.stunTime=0;
+    this.rewindCooldown = this.def.rewind ? (4+Math.random()*3) : null;
     this.id = enemyIdCounter++;
     this.hitFlash=0;
     this.bobT = Math.random()*10;
@@ -852,7 +970,10 @@ class Enemy{
     this.bobT += dt;
     if(this.hitFlash>0) this.hitFlash -= dt;
     let speed = this.baseSpeed;
-    if(this.slowTime>0 && !this.def.slowImmune){ this.slowTime -= dt; speed *= this.slowMul; }
+    if(this.stunTime>0){
+      this.stunTime -= dt; speed = 0;
+    } else if(this.slowTime>0 && !this.def.slowImmune){ this.slowTime -= dt; speed *= this.slowMul; }
+    if(this.weaken && this.weaken.time>0){ this.weaken.time -= dt; }
     let dotActive = false;
     if(this.burn && this.burn.time>0){
       this.hp -= this.burn.dps*dt;
@@ -948,6 +1069,7 @@ class Enemy{
 function applyDamage(enemy, dmg, enemiesArr, gainGold){
   if(enemy.dead) return;
   if(enemy.def.armor) dmg *= (1-enemy.def.armor);
+  if(enemy.weaken && enemy.weaken.time>0) dmg *= enemy.weaken.mul;
   enemy.hp -= dmg;
   enemy.hitFlash = 0.08;
   spawnFloater(enemy.x, enemy.y-20, '-'+Math.round(dmg), '#fff');
@@ -976,31 +1098,44 @@ const state = {
   spawnQueue: [],
   spawnTimer: 0,
   gameOver: false,
-  bestWave: parseInt(localStorage.getItem('bladeWatch_bestWave')||'0', 10)
+  bestWave: parseInt(localStorage.getItem('bladeWatch_bestWave')||'0', 10),
+  supportPoints: 0,
+  metaCost: 0,
+  metaSpeed: 0,
+  metaDamage: 0
 };
+const META_MAX = 6;
+function metaUpgradeCost(level){ return 6*(level+1); }
 
 function gainGold(n){ state.gold += n; refreshHud(); }
 
+// Difficulty accelerates continuously — this is what makes late waves brutal
+// instead of plateauing. hp/speed/count all grow, and spawn gaps shrink.
+function difficultyForWave(waveNum){
+  const hpMul = 1 + waveNum*0.15 + Math.pow(waveNum, 1.3)*0.012;
+  const speedMul = 1 + Math.min(waveNum*0.015, 0.9);
+  const spawnDelay = Math.max(0.15, 0.52 - waveNum*0.008);
+  const count = 8 + Math.floor(waveNum*1.7 + Math.pow(waveNum, 1.15)*0.15);
+  return { hpMul, speedMul, spawnDelay, count };
+}
+
 function generateWave(waveNum){
   const q = [];
-  const n = 8 + Math.floor(waveNum*1.5);
-  const hpMul = 1 + waveNum*0.15;
-  const speedMul = 1 + Math.min(waveNum*0.008, 0.3);
+  const diff = difficultyForWave(waveNum);
   const pool = ['imp','imp','runner'];
   if(waveNum>=3) pool.push('brute');
   if(waveNum>=4) pool.push('swamp');
   if(waveNum>=6) pool.push('shade');
+  if(waveNum>=12) pool.push('brute','shade'); // tougher mix dominates later waves
 
-  for(let i=0;i<n;i++){
+  for(let i=0;i<diff.count;i++){
     const t = pool[Math.floor(Math.random()*pool.length)];
-    q.push({type:t, hpMul, speedMul, delay: 0.5});
+    q.push({type:t, hpMul:diff.hpMul, speedMul:diff.speedMul, delay: diff.spawnDelay});
   }
   if(waveNum % 25 === 0){
     q.push({type:'overlord', hpMul:1, speedMul:1, delay:1.2, def:makeOverlordDef(waveNum)});
   } else if(waveNum % 5 === 0){
-    const rankIndex = Math.min(6, Math.floor(waveNum/5));
-    const rank = Math.max(1, 7-rankIndex);
-    q.push({type:'elite', hpMul:1, speedMul:1, delay:1.0, def:makeEliteDef(rank)});
+    q.push({type:'elite', hpMul:1, speedMul:1, delay:1.0, def:makeEliteDef(waveNum)});
   }
   return q;
 }
@@ -1057,12 +1192,36 @@ function update(dt){
       const bonus = 20 + state.wave*4;
       state.gold += bonus;
       spawnFloater(GAME_W/2, 90, 'Wave clear! +'+bonus+'g', '#6bd48a');
+      if(state.wave % 10 === 0){
+        const sp = 8 + Math.floor(state.wave/10)*2;
+        state.supportPoints += sp;
+        spawnFloater(GAME_W/2, 115, '+'+sp+' Support Points', '#c9c9f2');
+      }
       refreshHud();
     }
   }
 
   for(const t of towers) t.update(dt, enemies, gainGold);
   updateProjectiles(dt, enemies, gainGold);
+
+  // Corrupted Art: Rewind Ward — elite/overlord demons periodically yank an ally backward
+  for(const e of enemies){
+    if(e.rewindCooldown != null && !e.dead){
+      e.rewindCooldown -= dt;
+      if(e.rewindCooldown<=0){
+        const others = enemies.filter(o=>o!==e && !o.dead);
+        if(others.length){
+          const target = others[Math.floor(Math.random()*others.length)];
+          target.traveled = Math.max(0, target.traveled-110);
+          const pos = pointAtDistance(target.traveled);
+          target.x=pos.x; target.y=pos.y;
+          spawnParticles(target.x,target.y,'#b478ff',14,{speed:90,life:.5});
+          spawnFloater(target.x,target.y-24,'Rewound!','#b478ff');
+        }
+        e.rewindCooldown = 5+Math.random()*4;
+      }
+    }
+  }
 
   for(let i=enemies.length-1;i>=0;i--){
     const e = enemies[i];
@@ -1119,13 +1278,20 @@ function triggerGameOver(){
 /* =========================================================
    HUD / UI
 ========================================================= */
+function effectiveCost(def){
+  return Math.max(5, Math.round(def.cost * (1 - state.metaCost*0.03)));
+}
+
 function refreshHud(){
   document.getElementById('goldVal').textContent = Math.floor(state.gold);
   document.getElementById('lifeVal').textContent = Math.max(0,state.lives);
   document.getElementById('waveVal').textContent = state.wave + (state.waveInProgress? ' (in progress)':'');
   document.getElementById('btnStartWave').style.display = state.waveInProgress ? 'none':'inline-block';
+  const spBtn = document.getElementById('btnSupport');
+  if(spBtn) spBtn.textContent = '🏮 ' + state.supportPoints;
   buildShop();
   if(state.selectedTower) updateInfoPanel();
+  if(!document.getElementById('supportPanel').classList.contains('hidden')) buildSupportPanel();
 }
 
 function buildShop(){
@@ -1133,13 +1299,15 @@ function buildShop(){
   shop.innerHTML='';
   for(const key of TOWER_ORDER){
     const def = TOWER_TYPES[key];
+    const cost = effectiveCost(def);
+    const capped = def.legendary && towers.filter(t=>t.def.legendary).length>=MAX_LEGENDARY;
     const card = document.createElement('div');
     card.className = 'towerCard'
       + (state.selectedTowerType===key?' selected':'')
-      + (state.gold<def.cost?' disabled':'')
+      + ((state.gold<cost || capped)?' disabled':'')
       + (def.legendary?' legendary':'');
-    card.title = def.desc;
-    card.innerHTML = `${towerIconSvg(def)}<span class="tname">${def.name.split(' ')[0]}</span><span class="tcost">${def.cost}g</span>`;
+    card.title = def.desc + (capped? ' (limit reached)':'');
+    card.innerHTML = `${towerIconSvg(def)}<span class="tname">${def.name.split(' ')[0]}</span><span class="tcost">${cost}g</span>`;
     card.onclick = ()=>{
       state.selectedTower = null; document.getElementById('infoPanel').style.display='none';
       state.selectedTowerType = state.selectedTowerType===key? null : key;
@@ -1175,9 +1343,15 @@ function handleTap(clientX, clientY){
 
   if(state.selectedTowerType){
     const def = TOWER_TYPES[state.selectedTowerType];
-    if(state.gold>=def.cost && isValidPlacement(x,y)){
-      state.gold -= def.cost;
-      const t = new Tower(state.selectedTowerType, x, y);
+    const cost = effectiveCost(def);
+    const capped = def.legendary && towers.filter(t=>t.def.legendary).length>=MAX_LEGENDARY;
+    if(capped){
+      spawnFloater(x,y-10,'Legendary limit ('+MAX_LEGENDARY+')','#ff5d5d');
+      return;
+    }
+    if(state.gold>=cost && isValidPlacement(x,y)){
+      state.gold -= cost;
+      const t = new Tower(state.selectedTowerType, x, y, cost);
       towers.push(t);
       spawnParticles(x,y-10,def.color,10,{speed:70,life:.4});
       refreshHud();
@@ -1211,7 +1385,7 @@ function updateInfoPanel(){
   let left = t.x*sx + 26, top = t.y*sy - 40;
   if(left > stageRect.width-190) left = t.x*sx - 196;
   if(top < 4) top = 4;
-  if(top > stageRect.height-160) top = stageRect.height-160;
+  if(top > stageRect.height-210) top = stageRect.height-210;
   panel.style.left = left+'px';
   panel.style.top = top+'px';
   panel.style.display='block';
@@ -1219,6 +1393,23 @@ function updateInfoPanel(){
   const dmgCost = t.upgradeCost('dmg');
   const rangeCost = t.upgradeCost('range');
   const speedCost = t.upgradeCost('speed');
+  const awakenCost = t.awakenCost;
+
+  let awakenRow = '';
+  if(t.awakened){
+    awakenRow = `<div class="row" style="color:#ffe14d;font-weight:bold;">✦ AWAKENED ✦</div>`;
+  } else if(t.maxedOut){
+    awakenRow = `<div class="btnrow"><button class="btn-up" id="btnAwaken" style="background:#ffdf6b;" ${state.gold<awakenCost?'disabled':''}>AWAKEN — ${awakenCost}g</button></div>`;
+  }
+
+  let colorRow = '';
+  if(!t.def.legendary){
+    colorRow = `<div class="row" style="margin-top:4px;">Blade colour</div><div class="btnrow" style="flex-wrap:wrap;gap:3px;">` +
+      BLADE_COLORS.map(c=>`<span data-c="${c}" style="width:16px;height:16px;border-radius:50%;background:${c};display:inline-block;cursor:pointer;border:2px solid ${t.customColor===c?'#fff':'transparent'};"></span>`).join('') +
+      `</div>`;
+  } else {
+    colorRow = `<div class="row" style="color:#ffdf6b;font-size:10px;">Blade fixed: gold &amp; white — its signature.</div>`;
+  }
 
   panel.innerHTML = `
     <h4>${t.def.name}</h4>
@@ -1230,6 +1421,8 @@ function updateInfoPanel(){
       <button class="btn-up" id="upRange" ${(!rangeCost||state.gold<rangeCost)?'disabled':''}>RNG${rangeCost? '<br>+'+rangeCost+'g':'<br>MAX'}</button>
       <button class="btn-up" id="upSpeed" ${(!speedCost||state.gold<speedCost)?'disabled':''}>SPD${speedCost? '<br>+'+speedCost+'g':'<br>MAX'}</button>
     </div>
+    ${awakenRow}
+    ${colorRow}
     <div class="btnrow">
       <button class="btn-sell" id="btnSell">Sell (${t.sellValue}g)</button>
       <button class="btn-close" id="btnCloseInfo">Close</button>
@@ -1247,6 +1440,25 @@ function updateInfoPanel(){
   document.getElementById('upDmg').onclick = ()=>tryUpgrade('dmg');
   document.getElementById('upRange').onclick = ()=>tryUpgrade('range');
   document.getElementById('upSpeed').onclick = ()=>tryUpgrade('speed');
+  const btnAwaken = document.getElementById('btnAwaken');
+  if(btnAwaken){
+    btnAwaken.onclick = ()=>{
+      const cost = t.awakenCost;
+      if(cost!==null && state.gold>=cost){
+        state.gold -= cost;
+        t.awaken();
+        spawnParticles(t.x,t.y-10,t.def.color,24,{speed:120,life:.6});
+        spawnFloater(t.x,t.y-30,'AWAKENED!','#ffe14d');
+        refreshHud();
+      }
+    };
+  }
+  panel.querySelectorAll('[data-c]').forEach(sw=>{
+    sw.onclick = ()=>{
+      t.customColor = sw.getAttribute('data-c');
+      updateInfoPanel();
+    };
+  });
   document.getElementById('btnSell').onclick = ()=>{
     state.gold += t.sellValue;
     towers = towers.filter(x=>x!==t);
@@ -1273,6 +1485,45 @@ document.getElementById('btnResume').onclick = function(){
   state.paused = false;
   document.getElementById('pauseOverlay').classList.add('hidden');
 };
+document.getElementById('btnSupport').onclick = function(){
+  const panel = document.getElementById('supportPanel');
+  panel.classList.toggle('hidden');
+  if(!panel.classList.contains('hidden')) buildSupportPanel();
+};
+
+function buildSupportPanel(){
+  const panel = document.getElementById('supportPanel');
+  const rows = [
+    {key:'metaCost', label:'Cheaper Recruits', effect:(state.metaCost*3)+'% off'},
+    {key:'metaSpeed', label:'Faster Strikes', effect:'+'+Math.round((1-Math.pow(0.96,state.metaSpeed))*100)+'%'},
+    {key:'metaDamage', label:'Harder Blows', effect:'+'+(state.metaDamage*4)+'%'}
+  ];
+  panel.innerHTML = `<h4>🏮 Village Support — ${state.supportPoints}sp</h4>
+    <div style="font-size:10px;color:#c9bfe6;margin-bottom:4px;">Earned every 10th wave cleared. Permanent, but capped — the demons never stop scaling.</div>
+    ${rows.map(r=>{
+      const lvl = state[r.key];
+      const cost = lvl>=META_MAX? null : metaUpgradeCost(lvl);
+      return `<div class="srow">
+        <div class="slabel">${r.label}<br><span class="slevel">Lv${lvl}/${META_MAX} · ${r.effect}</span></div>
+        <button class="supUp" data-k="${r.key}" ${(cost===null||state.supportPoints<cost)?'disabled':''}>${cost===null?'MAX':'+'+cost+'sp'}</button>
+      </div>`;
+    }).join('')}
+    <button class="btn-close" id="btnCloseSupport">Close</button>`;
+  panel.querySelectorAll('[data-k]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const key = btn.getAttribute('data-k');
+      const lvl = state[key];
+      const cost = metaUpgradeCost(lvl);
+      if(lvl<META_MAX && state.supportPoints>=cost){
+        state.supportPoints -= cost;
+        state[key]++;
+        refreshHud();
+        buildSupportPanel();
+      }
+    };
+  });
+  document.getElementById('btnCloseSupport').onclick = ()=> panel.classList.add('hidden');
+}
 
 document.getElementById('btnPlay').onclick = function(){
   document.getElementById('startOverlay').classList.add('hidden');
@@ -1292,8 +1543,10 @@ function resetGame(){
   state.selectedTowerType=null; state.selectedTower=null;
   state.waveInProgress=false; state.spawnQueue=[]; state.spawnTimer=0;
   state.gameOver=false;
+  state.supportPoints=0; state.metaCost=0; state.metaSpeed=0; state.metaDamage=0;
   document.getElementById('btnSpeed').textContent='×1';
   document.getElementById('infoPanel').style.display='none';
+  document.getElementById('supportPanel').classList.add('hidden');
   refreshHud();
 }
 
