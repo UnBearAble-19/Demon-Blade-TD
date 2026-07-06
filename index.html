@@ -104,7 +104,7 @@
     padding:4px;
     pointer-events:auto;
     flex-wrap:wrap;
-    max-height:38%;
+    max-height:36%;
     overflow-y:auto;
     z-index:4;
   }
@@ -159,7 +159,9 @@
     padding:10px 12px;
     pointer-events:auto;
     font-size:12px;
-    width:220px;
+    width:230px;
+    max-height:78%;
+    overflow-y:auto;
     z-index:8;
   }
   #supportPanel h4{margin:0 0 6px; color:var(--accent5); font-size:13px;}
@@ -233,6 +235,7 @@
           <button class="iconbtn" id="btnSpeed">×1</button>
           <button class="iconbtn" id="btnPause">⏸</button>
           <button class="iconbtn" id="btnSupport">🏮 0</button>
+          <button class="iconbtn" id="btnAutoWave">🔁 Auto: Off</button>
           <button class="iconbtn" id="btnStartWave">Start Wave ▶</button>
         </div>
       </div>
@@ -287,11 +290,13 @@ const ctx = canvas.getContext('2d');
 const GAME_W = 1150, GAME_H = 620;
 canvas.width = GAME_W; canvas.height = GAME_H;
 
-// Path waypoints the demons walk along (a winding road through the village outskirts)
+// Path waypoints the demons walk along (a winding road through the village outskirts).
+// Kept above y=390 on purpose — the shop bar occupies the bottom ~37% of the stage,
+// so the road never runs underneath it.
 const PATH = [
-  {x:-60, y:100}, {x:210, y:100}, {x:210, y:290}, {x:760, y:290},
-  {x:760, y:100}, {x:960, y:100}, {x:960, y:470}, {x:270, y:470},
-  {x:270, y:560}, {x:1210, y:560}
+  {x:-60, y:90}, {x:210, y:90}, {x:210, y:250}, {x:760, y:250},
+  {x:760, y:90}, {x:960, y:90}, {x:960, y:340}, {x:270, y:340},
+  {x:270, y:390}, {x:1210, y:390}
 ];
 
 const segLens = [];
@@ -342,7 +347,7 @@ function distanceToPath(x,y){
 }
 function isValidPlacement(x,y){
   if(x<PLACEMENT_MARGIN || x>GAME_W-PLACEMENT_MARGIN) return false;
-  if(y<66 || y>GAME_H-PLACEMENT_MARGIN) return false;
+  if(y<66 || y>410) return false; // 410+ sits under the shop bar — keep it clear
   if(distanceToPath(x,y) < PATH_BUFFER) return false;
   for(const t of towers){
     if(Math.hypot(t.x-x, t.y-y) < TOWER_MIN_SEP) return false;
@@ -432,6 +437,7 @@ function drawPlacementGhost(){
 }
 
 // particles
+let globalClock = 0;
 const particles = [];
 function spawnParticles(x,y,color,count,opts){
   opts = opts||{};
@@ -441,7 +447,8 @@ function spawnParticles(x,y,color,count,opts){
     particles.push({
       x,y, vx:Math.cos(ang)*spd, vy:Math.sin(ang)*spd - (opts.up||0),
       life: opts.life || 0.5, maxLife: opts.life||0.5,
-      color, size: (opts.size||4)*(0.6+Math.random()*0.8), grav: opts.grav!==undefined?opts.grav:120
+      color, size: (opts.size||4)*(0.6+Math.random()*0.8), grav: opts.grav!==undefined?opts.grav:120,
+      shape: opts.shape || 'circle', rot: Math.random()*Math.PI*2
     });
   }
 }
@@ -458,8 +465,49 @@ function drawParticles(){
   for(const p of particles){
     ctx.save();
     ctx.globalAlpha = Math.max(0, p.life/p.maxLife);
-    ctx.fillStyle = p.color;
-    ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill();
+    ctx.translate(p.x, p.y);
+    ctx.fillStyle = p.color; ctx.strokeStyle = p.color;
+    const s = p.size;
+    switch(p.shape){
+      case 'drop': // water droplet
+        ctx.beginPath();
+        ctx.moveTo(0,-s*1.3);
+        ctx.quadraticCurveTo(s,0, 0,s);
+        ctx.quadraticCurveTo(-s,0, 0,-s*1.3);
+        ctx.fill();
+        break;
+      case 'flame': // teardrop flame
+        ctx.beginPath();
+        ctx.moveTo(0,s*1.2);
+        ctx.quadraticCurveTo(s*0.9,-s*0.2, 0,-s*1.3);
+        ctx.quadraticCurveTo(-s*0.9,-s*0.2, 0,s*1.2);
+        ctx.fill();
+        break;
+      case 'note': // music note
+        ctx.beginPath(); ctx.ellipse(0,s*0.6,s*0.55,s*0.4,-0.3,0,Math.PI*2); ctx.fill();
+        ctx.fillRect(s*0.45,-s*1.6,s*0.18,s*2.2);
+        ctx.beginPath(); ctx.moveTo(s*0.45,-s*1.6); ctx.quadraticCurveTo(s*1.4,-s*1.3,s*0.6,-s*0.7); ctx.fill();
+        break;
+      case 'sun': // little cartoony sun with rays
+        ctx.beginPath(); ctx.arc(0,0,s*0.6,0,Math.PI*2); ctx.fill();
+        ctx.lineWidth = s*0.25;
+        for(let i=0;i<8;i++){
+          const a = i*Math.PI/4 + p.rot;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(a)*s*0.75, Math.sin(a)*s*0.75);
+          ctx.lineTo(Math.cos(a)*s*1.4, Math.sin(a)*s*1.4);
+          ctx.stroke();
+        }
+        break;
+      case 'crescent': // crescent moon
+        ctx.beginPath(); ctx.arc(0,0,s*0.8,0,Math.PI*2); ctx.fill();
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath(); ctx.arc(s*0.4,-s*0.15,s*0.7,0,Math.PI*2); ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
+        break;
+      default:
+        ctx.beginPath(); ctx.arc(0,0,s,0,Math.PI*2); ctx.fill();
+    }
     ctx.restore();
   }
 }
@@ -488,25 +536,30 @@ function drawFloaters(){
 }
 
 /* =========================================================
-   TOWER (SLAYER) DEFINITIONS  — 8 recruitable styles
+   TOWER (SLAYER) DEFINITIONS  — 15 recruitable styles
 ========================================================= */
 const TOWER_TYPES = {
   water:   { name:'Water Slayer',   cost:60,  color:'#3fb7ff', dark:'#1c6f9c', range:115, damage:10, rate:0.65, proj:'slash',  special:'splash', splashR:34, desc:'Balanced cuts with a splash on hit.' },
-  flame:   { name:'Flame Slayer',   cost:90,  color:'#ff6a3f', dark:'#a83a1c', range:100, damage:20, rate:1.0,  proj:'fire',   special:'burn',   burnDps:6, burnTime:2.5, desc:'Sets demons ablaze.' },
-  thunder: { name:'Thunder Slayer', cost:100, color:'#ffe14d', dark:'#b8901a', range:105, damage:6,  rate:0.2,  proj:'bolt',   special:'chain',  chainCount:2, chainRange:70, desc:'Rapid strikes that arc between foes.' },
-  stone:   { name:'Stone Slayer',   cost:115, color:'#9c8f7a', dark:'#5c5344', range:95,  damage:30, rate:1.4,  proj:'hammer', special:'slow',   slowMul:0.5, slowTime:1.6, desc:'Crushing blows that slow demons.' },
-  wind:    { name:'Wind Slayer',    cost:135, color:'#6bd48a', dark:'#2f8a4c', range:150, damage:13, rate:0.85, proj:'gale',   special:'pierce', pierceCount:3, desc:'Long reach, cuts through multiple foes.' },
-  poison:  { name:'Serpent Slayer', cost:150, color:'#7fd94a', dark:'#355c1c', range:110, damage:5,  rate:0.5,  proj:'fang',   special:'poison', poisonDps:4, poisonTime:3, maxStacks:5, desc:'Venom that stacks the longer the fight goes.' },
-  mist:    { name:'Mist Slayer',    cost:170, color:'#8fb7c9', dark:'#3d5a66', range:130, damage:16, rate:0.6,  proj:'mist',   special:'crit',   critChance:0.3, critMul:2.2, desc:'Strikes from the fog — high crit chance.' },
-  sound:   { name:'Sound Slayer',   cost:200, color:'#c94fd6', dark:'#5c1c66', range:100, damage:9,  rate:0.55, proj:'wave',   special:'stun',   stunChance:0.25, stunTime:0.6, desc:'Resonant strikes that can stun demons briefly.' },
-  beast:   { name:'Beast Slayer',   cost:210, color:'#e0793f', dark:'#7a3a12', range:95,  damage:11, rate:0.32, proj:'claw',   special:'frenzy', frenzyRange:80, desc:'Wild, instinctive strikes hitting two foes at once.' },
-  bloom:   { name:'Bloom Slayer',   cost:160, color:'#ff8fc9', dark:'#8a1c56', range:115, damage:7,  rate:0.5,  proj:'petal',  special:'weaken', weakenMul:1.35, weakenTime:3, desc:'Toxic blossoms that make demons take more damage.' },
-  moon:    { name:'Moon Slayer',    cost:260, color:'#c9c9f2', dark:'#3a3a66', range:125, damage:17, rate:0.55, proj:'crescent', special:'execute', executeThreshold:0.15, executeBonus:3, desc:'Finishing strikes that surge against near-dead demons.' },
+  poison:  { name:'Serpent Slayer', cost:95,  color:'#f5f5f0', dark:'#3a3a38', range:110, damage:5,  rate:0.5,  proj:'snake',  special:'poison', poisonDps:4, poisonTime:3, maxStacks:5, desc:'A pale, coiling venom that stacks the longer the fight goes.' },
+  flame:   { name:'Flame Slayer',   cost:100, color:'#ff6a3f', dark:'#a83a1c', range:100, damage:20, rate:1.0,  proj:'fire',   special:'burn',   burnDps:6, burnTime:2.5, desc:'Sets demons ablaze.' },
+  sound:   { name:'Sound Slayer',   cost:120, color:'#c94fd6', dark:'#5c1c66', range:100, damage:9,  rate:0.55, proj:'wave',   special:'stun',   stunChance:0.25, stunTime:0.6, desc:'Resonant strikes that can stun demons briefly.' },
+  iron:    { name:'Iron Slayer',    cost:140, color:'#c9c2b0', dark:'#5c5548', range:100, damage:14, rate:0.7,  proj:'shard',  special:'sunder', sunderMul:0.6, sunderTime:3, desc:'Cracks armor, leaving demons exposed to everyone.' },
+  stone:   { name:'Stone Slayer',   cost:150, color:'#9c8f7a', dark:'#5c5344', range:95,  damage:30, rate:1.4,  proj:'hammer', special:'slow',   slowMul:0.5, slowTime:1.6, desc:'Crushing blows that slow demons. Damage has no ceiling.' },
+  wind:    { name:'Wind Slayer',    cost:160, color:'#6bd48a', dark:'#2f8a4c', range:150, damage:13, rate:0.85, proj:'gale',   special:'pierce', pierceCount:3, desc:'Long reach, cuts through multiple foes.' },
+  mist:    { name:'Mist Slayer',    cost:175, color:'#8fb7c9', dark:'#3d5a66', range:130, damage:16, rate:0.6,  proj:'mist',   special:'crit',   critChance:0.3, critMul:2.2, desc:'Strikes from the fog — high crit chance.' },
+  bloom:   { name:'Bloom Slayer',   cost:190, color:'#ff8fc9', dark:'#8a1c56', range:115, damage:7,  rate:0.5,  proj:'petal',  special:'weaken', weakenMul:1.35, weakenTime:3, desc:'Toxic blossoms that make demons take more damage from everyone.' },
+  frost:   { name:'Frost Slayer',   cost:205, color:'#bfe9ff', dark:'#3d6a80', range:105, damage:9,  rate:0.6,  proj:'ice',    special:'slow',   slowMul:0.15, slowTime:2.2, desc:'Bitter cold that nearly halts demons in place.' },
+  star:    { name:'Star Slayer',    cost:220, color:'#ffd9f0', dark:'#7a3a66', range:135, damage:12, rate:0.6,  proj:'star',   special:'orbital', orbitalCount:2, desc:'Calls down strikes on scattered foes across its whole range.' },
+  moon:    { name:'Moon Slayer',    cost:240, color:'#c9c9f2', dark:'#3a3a66', range:125, damage:17, rate:0.55, proj:'crescent', special:'execute', executeThreshold:0.15, executeBonus:3, desc:'Finishing strikes that surge against near-dead demons. Range has no ceiling.' },
+  beast:   { name:'Beast Slayer',   cost:250, color:'#e0793f', dark:'#7a3a12', range:95,  damage:11, rate:0.32, proj:'claw',   special:'frenzy', frenzyRange:80, desc:'Wild, instinctive strikes hitting two foes at once. Speed has no ceiling.' },
+  thunder: { name:'Thunder Slayer', cost:265, color:'#ffe14d', dark:'#b8901a', range:105, damage:6,  rate:0.2,  proj:'bolt',   special:'chain',  chainCount:2, chainRange:70, desc:'Rapid strikes that arc between foes — devastating against groups.' },
   sun:     { name:'Sun Slayer',     cost:480, color:'#ffdf6b', dark:'#8a6a00', range:140, damage:55, rate:0.5,  proj:'sun',    special:'radiant',splashR:40, legendary:true, desc:'The strongest style ever recorded. Its blade stays gold and white — that is its mark.' }
 };
-const TOWER_ORDER = ['water','flame','thunder','stone','wind','poison','mist','sound','beast','bloom','moon','sun'];
+const TOWER_ORDER = ['water','poison','flame','sound','iron','stone','wind','mist','bloom','frost','star','moon','beast','thunder','sun'];
 const MAX_LEGENDARY = 2;
 const BLADE_COLORS = ['#3fb7ff','#ff6a3f','#ffe14d','#9c8f7a','#6bd48a','#7fd94a','#8fb7c9','#c94fd6','#e0793f','#ff8fc9','#c9c9f2','#ff5d5d','#ffffff'];
+// themed hit/muzzle particle shapes per style, per the request
+const TOWER_PARTICLE_SHAPE = { water:'drop', flame:'flame', sound:'note', sun:'sun', moon:'crescent' };
 function darkenColor(hex, amt){
   const c = hex.replace('#','');
   const num = parseInt(c,16);
@@ -539,22 +592,34 @@ class Tower{
   get range(){
     let r = this.def.range * (1 + 0.09*this.rangeLevel);
     if(this.awakened) r *= 1.15;
+    r *= (1 + state.demonVigor*0.05);      // Demon Vigor: range + speed
+    r *= (1 + state.awakeningSigil*0.2);   // Awakening Sigil: everything, massively
     return r;
   }
   get damage(){
     let d = this.def.damage * (1 + 0.22*this.dmgLevel) * (1 + state.metaDamage*0.04);
     if(this.awakened) d *= 1.4;
+    d *= (1 + state.focusedBreath*0.05);   // Focused Breath: damage + speed
+    d *= (1 + state.awakeningSigil*0.2);   // Awakening Sigil
     return d;
   }
   get rate(){
     let r = this.def.rate * Math.pow(0.9, this.speedLevel) * Math.pow(0.96, state.metaSpeed);
     if(this.awakened) r *= 0.85;
+    r *= Math.pow(0.97, state.demonVigor);     // Demon Vigor
+    r *= Math.pow(0.97, state.focusedBreath);  // Focused Breath
+    r *= Math.pow(0.95, state.farsightTrance); // Farsight Trance: speed only
+    r *= Math.pow(0.85, state.awakeningSigil); // Awakening Sigil
     return r;
   }
   get totalLevel(){ return this.dmgLevel + this.rangeLevel + this.speedLevel; }
   upgradeCost(track){
     const lvl = track==='dmg'? this.dmgLevel : track==='range'? this.rangeLevel : this.speedLevel;
-    if(lvl>=4) return null;
+    // Just for fun: a few styles have no ceiling on their signature stat.
+    const uncapped = (this.type==='beast' && track==='speed')
+      || (this.type==='stone' && track==='dmg')
+      || (this.type==='moon' && track==='range');
+    if(!uncapped && lvl>=4) return null;
     const mul = track==='dmg'? 0.4 : track==='range'? 0.28 : 0.34;
     return Math.round(this.def.cost*mul*(lvl+1)*(1-state.metaCost*0.03));
   }
@@ -764,7 +829,7 @@ function fireProjectile(tower, target){
     dmg: tower.damage,
     def: tower.def
   });
-  spawnParticles(tower.x, tower.y-10, tower.def.color, 3, {speed:40, life:0.25, size:2.5, grav:0});
+  spawnParticles(tower.x, tower.y-10, tower.def.color, 3, {speed:40, life:0.25, size:2.5, grav:0, shape: TOWER_PARTICLE_SHAPE[tower.type]||'circle'});
 }
 
 function updateProjectiles(dt, enemiesArr, gainGold){
@@ -795,7 +860,7 @@ function hitEnemy(p, enemy, enemiesArr, gainGold){
   }
   applyDamage(enemy, dmg, enemiesArr, gainGold);
   if(wasCrit) spawnFloater(enemy.x, enemy.y-32, 'CRIT!', '#ffe14d');
-  spawnParticles(enemy.x, enemy.y-10, p.color, 6, {speed:70, life:0.35, size:3});
+  spawnParticles(enemy.x, enemy.y-10, p.color, 6, {speed:70, life:0.35, size:3, shape: TOWER_PARTICLE_SHAPE[p.tower.type]||'circle'});
 
   if(def.special === 'splash'){
     for(const e of enemiesArr){
@@ -808,6 +873,16 @@ function hitEnemy(p, enemy, enemiesArr, gainGold){
     enemy.burn = { dps: def.burnDps, time: def.burnTime };
   } else if(def.special === 'slow'){
     if(!enemy.def.slowImmune){ enemy.slowTime = def.slowTime; enemy.slowMul = def.slowMul; }
+  } else if(def.special === 'sunder'){
+    enemy.sunder = { mul: def.sunderMul, time: def.sunderTime };
+  } else if(def.special === 'orbital'){
+    const candidates = enemiesArr.filter(e=>e!==enemy && !e.dead && Math.hypot(e.x-p.tower.x,e.y-p.tower.y)<=p.tower.range);
+    for(let i=0;i<Math.min(def.orbitalCount||2, candidates.length); i++){
+      const idx = Math.floor(Math.random()*candidates.length);
+      const target = candidates.splice(idx,1)[0];
+      applyDamage(target, dmg*0.65, enemiesArr, gainGold);
+      spawnParticles(target.x,target.y-10,def.color,5,{speed:70,life:.3,size:2.5,shape:'sun'});
+    }
   } else if(def.special === 'stun'){
     if(!enemy.def.slowImmune && Math.random() < def.stunChance){
       enemy.stunTime = def.stunTime;
@@ -876,8 +951,18 @@ function drawProjectiles(){
       ctx.fillRect(-4,-4,8,8);
     } else if(p.type==='fire'){
       ctx.beginPath(); ctx.arc(0,0,4,0,Math.PI*2); ctx.fill();
-    } else if(p.type==='fang'){
-      ctx.beginPath(); ctx.moveTo(-5,-3); ctx.lineTo(5,0); ctx.lineTo(-5,3); ctx.closePath(); ctx.fill();
+    } else if(p.type==='snake'){
+      const wig = (i)=> Math.sin(globalClock*14 + i*0.9)*3;
+      ctx.strokeStyle = '#f5f5f0'; ctx.lineWidth=3; ctx.lineCap='round';
+      ctx.beginPath();
+      for(let i=-8;i<=8;i+=4){
+        if(i===-8) ctx.moveTo(i, wig(i)); else ctx.lineTo(i, wig(i));
+      }
+      ctx.stroke();
+      ctx.fillStyle='#f5f5f0';
+      ctx.beginPath(); ctx.arc(8, wig(8), 3, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle='#c0201a';
+      ctx.beginPath(); ctx.arc(9, wig(8)-1, 0.8, 0, Math.PI*2); ctx.fill();
     } else if(p.type==='mist'){
       ctx.globalAlpha=.75;
       ctx.beginPath(); ctx.arc(0,0,5,0,Math.PI*2); ctx.fill();
@@ -897,6 +982,17 @@ function drawProjectiles(){
       ctx.beginPath(); ctx.ellipse(0,0,6,3,0,0,Math.PI*2); ctx.fill();
     } else if(p.type==='crescent'){
       ctx.beginPath(); ctx.arc(2,0,6,0.6,5.6); ctx.strokeStyle=p.color; ctx.lineWidth=3; ctx.stroke();
+    } else if(p.type==='ice'){
+      ctx.fillStyle='#bfe9ff';
+      ctx.beginPath();
+      for(let i=0;i<6;i++){ const a=i*Math.PI/3; if(i===0) ctx.moveTo(Math.cos(a)*5,Math.sin(a)*5); else ctx.lineTo(Math.cos(a)*5,Math.sin(a)*5); }
+      ctx.closePath(); ctx.fill();
+    } else if(p.type==='shard'){
+      ctx.fillStyle='#c9c2b0';
+      ctx.beginPath(); ctx.moveTo(-5,0); ctx.lineTo(0,-6); ctx.lineTo(5,0); ctx.lineTo(0,6); ctx.closePath(); ctx.fill();
+    } else if(p.type==='star'){
+      ctx.fillStyle='#ffd9f0';
+      ctx.beginPath(); drawStar(0,0,6); ctx.fill();
     } else {
       ctx.beginPath(); ctx.ellipse(0,0,7,2.4,0,0,Math.PI*2); ctx.fill();
     }
@@ -959,7 +1055,7 @@ class Enemy{
     this.x=pos.x; this.y=pos.y; this.angle=pos.angle;
     this.dead=false;
     this.reachedEnd=false;
-    this.burn=null; this.poison=null; this.weaken=null;
+    this.burn=null; this.poison=null; this.weaken=null; this.sunder=null;
     this.slowTime=0; this.slowMul=1; this.stunTime=0;
     this.rewindCooldown = this.def.rewind ? (4+Math.random()*3) : null;
     this.id = enemyIdCounter++;
@@ -974,6 +1070,7 @@ class Enemy{
       this.stunTime -= dt; speed = 0;
     } else if(this.slowTime>0 && !this.def.slowImmune){ this.slowTime -= dt; speed *= this.slowMul; }
     if(this.weaken && this.weaken.time>0){ this.weaken.time -= dt; }
+    if(this.sunder && this.sunder.time>0){ this.sunder.time -= dt; }
     let dotActive = false;
     if(this.burn && this.burn.time>0){
       this.hp -= this.burn.dps*dt;
@@ -1068,7 +1165,11 @@ class Enemy{
 
 function applyDamage(enemy, dmg, enemiesArr, gainGold){
   if(enemy.dead) return;
-  if(enemy.def.armor) dmg *= (1-enemy.def.armor);
+  if(enemy.def.armor){
+    let armorVal = enemy.def.armor;
+    if(enemy.sunder && enemy.sunder.time>0) armorVal *= (1-enemy.sunder.mul);
+    dmg *= (1-armorVal);
+  }
   if(enemy.weaken && enemy.weaken.time>0) dmg *= enemy.weaken.mul;
   enemy.hp -= dmg;
   enemy.hitFlash = 0.08;
@@ -1102,20 +1203,30 @@ const state = {
   supportPoints: 0,
   metaCost: 0,
   metaSpeed: 0,
-  metaDamage: 0
+  metaDamage: 0,
+  demonVigor: 0,
+  focusedBreath: 0,
+  farsightTrance: 0,
+  clearMind: 0,
+  awakeningSigil: 0,
+  autoWave: false,
+  autoTimer: 3
 };
 const META_MAX = 6;
+const SIGIL_MAX = 3;
 function metaUpgradeCost(level){ return 6*(level+1); }
+function sigilUpgradeCost(level){ return 40*(level+1)*(level+1); }
 
 function gainGold(n){ state.gold += n; refreshHud(); }
 
-// Difficulty accelerates continuously — this is what makes late waves brutal
-// instead of plateauing. hp/speed/count all grow, and spawn gaps shrink.
+// Difficulty accelerates continuously AND steps up hard every 10 waves —
+// tuned to stay sane (no runaway enemy counts / infinities) through wave 1000.
 function difficultyForWave(waveNum){
-  const hpMul = 1 + waveNum*0.15 + Math.pow(waveNum, 1.3)*0.012;
-  const speedMul = 1 + Math.min(waveNum*0.015, 0.9);
-  const spawnDelay = Math.max(0.15, 0.52 - waveNum*0.008);
-  const count = 8 + Math.floor(waveNum*1.7 + Math.pow(waveNum, 1.15)*0.15);
+  const decade = Math.floor(waveNum/10);
+  const hpMul = 1 + waveNum*0.15 + Math.pow(waveNum, 1.3)*0.012 + decade*0.55;
+  const speedMul = 1 + Math.min(waveNum*0.02, 3.2);
+  const spawnDelay = Math.max(0.08, 0.52 - waveNum*0.006);
+  const count = Math.min(160, 8 + Math.floor(waveNum*1.7 + Math.pow(waveNum, 1.15)*0.15));
   return { hpMul, speedMul, spawnDelay, count };
 }
 
@@ -1173,13 +1284,17 @@ function loop(now){
   lastTime = now;
   if(dt>0.05) dt=0.05;
   if(!state.paused && state.running && !state.gameOver){
-    update(dt*state.speedMul);
+    // Sub-step rather than scaling dt, so fast-forward stays accurate
+    // (path following & projectile collisions don't get chunky at 16x).
+    for(let i=0;i<state.speedMul;i++) update(dt);
   }
   render();
 }
 
 function update(dt){
+  globalClock += dt;
   if(state.waveInProgress){
+    if(state.clearMind>0){ state.gold += state.clearMind*0.6*dt; }
     state.spawnTimer -= dt;
     if(state.spawnTimer<=0 && state.spawnQueue.length>0){
       const spec = state.spawnQueue.shift();
@@ -1189,6 +1304,7 @@ function update(dt){
     }
     if(state.spawnQueue.length===0 && enemies.length===0){
       state.waveInProgress = false;
+      state.autoTimer = 3;
       const bonus = 20 + state.wave*4;
       state.gold += bonus;
       spawnFloater(GAME_W/2, 90, 'Wave clear! +'+bonus+'g', '#6bd48a');
@@ -1199,6 +1315,9 @@ function update(dt){
       }
       refreshHud();
     }
+  } else if(state.autoWave && !state.gameOver){
+    state.autoTimer -= dt;
+    if(state.autoTimer<=0){ startNextWave(); }
   }
 
   for(const t of towers) t.update(dt, enemies, gainGold);
@@ -1261,6 +1380,11 @@ function render(){
   drawParticles();
   drawFloaters();
   drawPlacementGhost();
+
+  if(!state.waveInProgress && state.autoWave && !state.gameOver && state.running){
+    const btn = document.getElementById('btnStartWave');
+    if(btn) btn.textContent = 'Start Wave (' + Math.max(0, Math.ceil(state.autoTimer)) + 's) ▶';
+  }
 }
 
 function triggerGameOver(){
@@ -1286,7 +1410,12 @@ function refreshHud(){
   document.getElementById('goldVal').textContent = Math.floor(state.gold);
   document.getElementById('lifeVal').textContent = Math.max(0,state.lives);
   document.getElementById('waveVal').textContent = state.wave + (state.waveInProgress? ' (in progress)':'');
-  document.getElementById('btnStartWave').style.display = state.waveInProgress ? 'none':'inline-block';
+  const startBtn = document.getElementById('btnStartWave');
+  startBtn.style.display = state.waveInProgress ? 'none':'inline-block';
+  if(!state.autoWave) startBtn.textContent = 'Start Wave ▶';
+  const autoBtn = document.getElementById('btnAutoWave');
+  autoBtn.textContent = '🔁 Auto: ' + (state.autoWave? 'On':'Off');
+  autoBtn.classList.toggle('active', state.autoWave);
   const spBtn = document.getElementById('btnSupport');
   if(spBtn) spBtn.textContent = '🏮 ' + state.supportPoints;
   buildShop();
@@ -1473,8 +1602,11 @@ function updateInfoPanel(){
 }
 
 document.getElementById('btnStartWave').onclick = startNextWave;
+const SPEED_STEPS = [1,2,4,8,16];
 document.getElementById('btnSpeed').onclick = function(){
-  state.speedMul = state.speedMul===1? 2 : 1;
+  let idx = SPEED_STEPS.indexOf(state.speedMul);
+  idx = (idx+1) % SPEED_STEPS.length;
+  state.speedMul = SPEED_STEPS[idx];
   this.textContent = '×'+state.speedMul;
 };
 document.getElementById('btnPause').onclick = function(){
@@ -1490,31 +1622,43 @@ document.getElementById('btnSupport').onclick = function(){
   panel.classList.toggle('hidden');
   if(!panel.classList.contains('hidden')) buildSupportPanel();
 };
+document.getElementById('btnAutoWave').onclick = function(){
+  state.autoWave = !state.autoWave;
+  if(state.autoWave && !state.waveInProgress) state.autoTimer = 3;
+  refreshHud();
+};
 
 function buildSupportPanel(){
   const panel = document.getElementById('supportPanel');
   const rows = [
-    {key:'metaCost', label:'Cheaper Recruits', effect:(state.metaCost*3)+'% off'},
-    {key:'metaSpeed', label:'Faster Strikes', effect:'+'+Math.round((1-Math.pow(0.96,state.metaSpeed))*100)+'%'},
-    {key:'metaDamage', label:'Harder Blows', effect:'+'+(state.metaDamage*4)+'%'}
+    {key:'metaCost', label:'Cheaper Recruits', max:META_MAX, costFn:metaUpgradeCost, effect:(l)=>(l*3)+'% off'},
+    {key:'metaSpeed', label:'Faster Strikes', max:META_MAX, costFn:metaUpgradeCost, effect:(l)=>'+'+Math.round((1-Math.pow(0.96,l))*100)+'%'},
+    {key:'metaDamage', label:'Harder Blows', max:META_MAX, costFn:metaUpgradeCost, effect:(l)=>'+'+(l*4)+'%'},
+    {key:'demonVigor', label:'Demon Vigor (Rng+Spd)', max:META_MAX, costFn:metaUpgradeCost, effect:(l)=>'+'+(l*5)+'%'},
+    {key:'focusedBreath', label:'Focused Breath (Dmg+Spd)', max:META_MAX, costFn:metaUpgradeCost, effect:(l)=>'+'+(l*5)+'%'},
+    {key:'farsightTrance', label:'Farsight Trance (Spd)', max:META_MAX, costFn:metaUpgradeCost, effect:(l)=>'+'+Math.round((1-Math.pow(0.95,l))*100)+'%'},
+    {key:'clearMind', label:'Clear Mind State', max:META_MAX, costFn:metaUpgradeCost, effect:(l)=>'+'+(l*0.6).toFixed(1)+'g/s'},
+    {key:'awakeningSigil', label:'Awakening Sigil (ALL, massive)', max:SIGIL_MAX, costFn:sigilUpgradeCost, effect:(l)=>'+'+(l*20)+'% all'}
   ];
   panel.innerHTML = `<h4>🏮 Village Support — ${state.supportPoints}sp</h4>
     <div style="font-size:10px;color:#c9bfe6;margin-bottom:4px;">Earned every 10th wave cleared. Permanent, but capped — the demons never stop scaling.</div>
     ${rows.map(r=>{
       const lvl = state[r.key];
-      const cost = lvl>=META_MAX? null : metaUpgradeCost(lvl);
+      const cost = lvl>=r.max? null : r.costFn(lvl);
       return `<div class="srow">
-        <div class="slabel">${r.label}<br><span class="slevel">Lv${lvl}/${META_MAX} · ${r.effect}</span></div>
-        <button class="supUp" data-k="${r.key}" ${(cost===null||state.supportPoints<cost)?'disabled':''}>${cost===null?'MAX':'+'+cost+'sp'}</button>
+        <div class="slabel">${r.label}<br><span class="slevel">Lv${lvl}/${r.max} · ${r.effect(lvl)}</span></div>
+        <button class="supUp" data-k="${r.key}" data-max="${r.max}" ${(cost===null||state.supportPoints<cost)?'disabled':''}>${cost===null?'MAX':'+'+cost+'sp'}</button>
       </div>`;
     }).join('')}
     <button class="btn-close" id="btnCloseSupport">Close</button>`;
   panel.querySelectorAll('[data-k]').forEach(btn=>{
     btn.onclick = ()=>{
       const key = btn.getAttribute('data-k');
+      const max = parseInt(btn.getAttribute('data-max'),10);
+      const row = rows.find(r=>r.key===key);
       const lvl = state[key];
-      const cost = metaUpgradeCost(lvl);
-      if(lvl<META_MAX && state.supportPoints>=cost){
+      const cost = row.costFn(lvl);
+      if(lvl<max && state.supportPoints>=cost){
         state.supportPoints -= cost;
         state[key]++;
         refreshHud();
@@ -1544,6 +1688,8 @@ function resetGame(){
   state.waveInProgress=false; state.spawnQueue=[]; state.spawnTimer=0;
   state.gameOver=false;
   state.supportPoints=0; state.metaCost=0; state.metaSpeed=0; state.metaDamage=0;
+  state.demonVigor=0; state.focusedBreath=0; state.farsightTrance=0; state.clearMind=0; state.awakeningSigil=0;
+  state.autoWave=false; state.autoTimer=3;
   document.getElementById('btnSpeed').textContent='×1';
   document.getElementById('infoPanel').style.display='none';
   document.getElementById('supportPanel').classList.add('hidden');
